@@ -89,8 +89,10 @@ export function mapToEvidenceRows(
   result: ExtractionResult,
   literatureId: string
 ): Omit<EmpiricalEvidence, 'id' | 'created_at'>[] {
+  const hasNumber = (s: string | null | undefined) => s != null && /\d/.test(s)
+
   return (result.empirical_evidence || [])
-    .filter((ev) => ev.metric_value != null && ev.metric_value !== '')
+    .filter((ev) => hasNumber(ev.metric_value) || hasNumber(ev.evidence_text))
     .map((ev, index) => ({
     literature_id: literatureId,
     evidence_text: ev.evidence_text,
