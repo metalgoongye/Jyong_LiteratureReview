@@ -72,7 +72,7 @@ Rules:
 1. fields: freely determine research fields based on the paper's actual content, keywords, journal name, and topic. Use Korean terms where appropriate (e.g., "토지이용계획", "환경계획", "구조방정식", "주택정책", "도시재생", "공간분석", "GeoAI", "탄소중립", "기후변화", "교통계획", "부동산", "도시계획", "통계모형" etc.). Do NOT limit to a fixed list — extract the most accurate field labels from the paper itself. Multiple values allowed, max 4.
 2. If paper language is Korean, set language="korean" and skip bullets_korean (leave as empty array)
 3. Empirical evidence: ONLY include findings with explicit numbers (%, coefficients, p-values, sample sizes, dollar amounts, effect sizes, etc.). If no concrete number exists in the paper, return empirical_evidence as an empty array []. metric_value MUST contain the actual number. evidence_text in English (one sentence with the number included), evidence_text_korean in Korean (학술체). page_reference: only if CERTAIN from [PAGE X] markers, otherwise null. Max 5 items.
-4. Bullets must be 개조식 — concise phrases, NOT full sentences. Max 6 bullets per section
+4. Bullets must be 개조식 — concise phrases, NOT full sentences. Max 4 bullets per section. Max 5 sections total. Keep JSON output compact.
 5. overall_accuracy is 0–100 (your honest confidence, not aspirational)
 6. feedback: note any limitations, truncated content, or areas needing manual review (max 3 sentences)
 7. causal_paths: Extract the causal/structural framework if present. nodes = key variables; type = "independent" (exogenous/predictor), "mediator" (intermediate pathway), "dependent" (outcome). edges = directional relationships with statistical coefficients and p-values where available. If no causal model exists, set causal_paths to null.`
