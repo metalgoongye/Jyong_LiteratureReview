@@ -57,6 +57,7 @@ export interface ExtractionResult {
   }>
   empirical_evidence: Array<{
     evidence_text: string
+    evidence_text_korean?: string | null
     metric_name?: string | null
     metric_value?: string | null
     metric_unit?: string | null
