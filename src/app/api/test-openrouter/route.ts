@@ -1,32 +1,30 @@
 import { NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 
 export async function GET() {
-  const apiKey = process.env.OPENROUTER_API_KEY
+  const apiKey = process.env.ANTHROPIC_API_KEY
 
   if (!apiKey) {
-    return NextResponse.json({ error: 'OPENROUTER_API_KEY not set' }, { status: 500 })
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set in Vercel env vars' }, { status: 500 })
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'http://localhost:3000',
-      'X-Title': 'LitReview Test',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-3-5-sonnet',
-      messages: [{ role: 'user', content: 'Say "OK" in one word.' }],
+  try {
+    const anthropic = new Anthropic({ apiKey })
+    const response = await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
       max_tokens: 10,
-    }),
-  })
-
-  const text = await response.text()
-  return NextResponse.json({
-    status: response.status,
-    ok: response.ok,
-    keyPrefix: apiKey.substring(0, 15) + '...',
-    response: text,
-  })
+      messages: [{ role: 'user', content: 'Say OK' }],
+    })
+    return NextResponse.json({
+      ok: true,
+      keyPrefix: apiKey.substring(0, 14) + '...',
+      response: response.content[0],
+    })
+  } catch (err) {
+    return NextResponse.json({
+      ok: false,
+      keyPrefix: apiKey.substring(0, 14) + '...',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 }
