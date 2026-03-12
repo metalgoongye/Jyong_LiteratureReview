@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       messages: messages as Parameters<typeof callOpenRouter>[0]['messages'],
       response_format: { type: 'json_object' },
       temperature: 0.2,
-      max_tokens: 8000,
+      max_tokens: 4000,
     })
 
     // Parse and store results
