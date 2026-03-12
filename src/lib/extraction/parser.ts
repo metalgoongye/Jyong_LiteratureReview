@@ -60,6 +60,7 @@ export function mapToLiteratureUpdate(
       ? (quality.overall_accuracy <= 1 ? quality.overall_accuracy * 100 : quality.overall_accuracy)
       : null,
     ai_feedback: quality.feedback ?? null,
+    causal_paths: result.causal_paths ?? null,
   }
 }
 

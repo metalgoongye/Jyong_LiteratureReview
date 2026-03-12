@@ -56,6 +56,10 @@ export interface Literature {
   created_at: string
   updated_at: string
   deleted_at?: string | null
+  causal_paths?: {
+    nodes: Array<{ id: string; label: string; type: 'independent' | 'mediator' | 'dependent' }>
+    edges: Array<{ from: string; to: string; coefficient?: string | null; pvalue?: string | null; direction?: '+' | '-' | null }>
+  } | null
 }
 
 export interface LiteratureContent {

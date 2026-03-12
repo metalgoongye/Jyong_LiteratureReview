@@ -5,6 +5,7 @@ import { ContentSection } from '@/components/literature/ContentSection'
 import { EvidenceBox } from '@/components/literature/EvidenceBox'
 import { PdfViewerWrapper } from '@/components/literature/PdfViewerWrapper'
 import { RetryExtract } from '@/components/literature/RetryExtract'
+import { CausalDiagram } from '@/components/literature/CausalDiagram'
 import { Badge } from '@/components/ui/Badge'
 import { formatAuthors, formatYear } from '@/lib/utils/format'
 import type { LiteratureContent, EmpiricalEvidence } from '@/types/literature'
@@ -137,6 +138,11 @@ export default async function LiteratureDetailPage({
               {/* Evidence */}
               {evidenceItems.length > 0 && (
                 <EvidenceBox evidence={evidenceItems} />
+              )}
+
+              {/* Causal diagram */}
+              {lit.causal_paths && (
+                <CausalDiagram paths={lit.causal_paths as any} />
               )}
 
               {/* Content sections */}

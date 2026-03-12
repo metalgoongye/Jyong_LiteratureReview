@@ -22,15 +22,8 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   return pages.join('\n\n')
 }
 
-export function truncateTextForAI(text: string, maxChars = 40000): string {
-  if (text.length <= maxChars) return text
-  // Take first 30000 chars (intro/methods) + last 10000 chars (results/conclusion)
-  const head = text.slice(0, 30000)
-  const tail = text.slice(-10000)
-  return (
-    head +
-    '\n\n[...middle section omitted...]\n\n' +
-    tail +
-    '\n\n[NOTE: Document truncated for processing.]'
-  )
+export function truncateTextForAI(text: string, maxWords = 12000): string {
+  const words = text.split(/\s+/)
+  if (words.length <= maxWords) return text
+  return words.slice(0, maxWords).join(' ') + '\n\n[NOTE: Document truncated at 12,000 words for processing.]'
 }

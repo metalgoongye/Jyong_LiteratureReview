@@ -61,6 +61,10 @@ Return a single JSON object with this exact schema:
     "metadata_confidence": number,
     "content_confidence": number,
     "feedback": string
+  },
+  "causal_paths": {
+    "nodes": [{"id": string, "label": string, "type": "independent"|"mediator"|"dependent"}],
+    "edges": [{"from": string, "to": string, "coefficient": string|null, "pvalue": string|null, "direction": "+"|"-"|null}]
   }
 }
 
@@ -70,4 +74,5 @@ Rules:
 3. Empirical evidence: ONLY include findings with explicit numbers (%, coefficients, p-values, sample sizes, dollar amounts, effect sizes, etc.). If no concrete number exists in the paper, return empirical_evidence as an empty array []. metric_value MUST contain the actual number. evidence_text in English (one sentence with the number included), evidence_text_korean in Korean (학술체). page_reference: only if CERTAIN from [PAGE X] markers, otherwise null. Max 5 items.
 4. Bullets must be 개조식 — concise phrases, NOT full sentences. Max 6 bullets per section
 5. overall_accuracy is 0–100 (your honest confidence, not aspirational)
-6. feedback: note any limitations, truncated content, or areas needing manual review (max 3 sentences)`
+6. feedback: note any limitations, truncated content, or areas needing manual review (max 3 sentences)
+7. causal_paths: Extract the causal/structural framework if present. nodes = key variables; type = "independent" (exogenous/predictor), "mediator" (intermediate pathway), "dependent" (outcome). edges = directional relationships with statistical coefficients and p-values where available. If no causal model exists, set causal_paths to null.`
