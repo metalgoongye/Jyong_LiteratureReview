@@ -108,11 +108,11 @@ export async function POST(request: NextRequest) {
     // Call OpenRouter
     let rawResponse = ''
     rawResponse = await callOpenRouter({
-      model: 'anthropic/claude-3.5-haiku',
+      model: 'claude-3-5-haiku-20241022',
       messages: messages as Parameters<typeof callOpenRouter>[0]['messages'],
       response_format: { type: 'json_object' },
       temperature: 0.2,
-      max_tokens: 4000,
+      max_tokens: 8000,
     })
 
     // Parse and store results
