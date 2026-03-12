@@ -67,7 +67,7 @@ Return a single JSON object with this exact schema:
 Rules:
 1. fields: choose from ["토지이용계획", "주택정책 및 부동산", "환경계획", "탄소중립", "기후변화적응 및 재난안전관리", "GeoAI", "도시계획 일반", "교통계획", "기타"] - multiple values allowed
 2. If paper language is Korean, set language="korean" and skip bullets_korean (leave as empty array)
-3. Empirical evidence: ONLY include findings with concrete numerical/statistical data (percentages, coefficients, p-values, counts, ratios, dollar amounts, etc.). Do NOT include qualitative statements without numbers. evidence_text in English (concise summary of the quantitative finding), evidence_text_korean in Korean (학술체). metric_name/value/unit: extract the key number explicitly. page_reference: only include if you are CERTAIN of the page number from [PAGE X] markers; otherwise null. original_quote: exact verbatim sentence containing the statistic, otherwise null. Max 5 evidence items.
+3. Empirical evidence: ONLY include findings with explicit numbers (%, coefficients, p-values, sample sizes, dollar amounts, effect sizes, etc.). If no concrete number exists in the paper, return empirical_evidence as an empty array []. metric_value MUST contain the actual number. evidence_text in English (one sentence with the number included), evidence_text_korean in Korean (학술체). page_reference: only if CERTAIN from [PAGE X] markers, otherwise null. Max 5 items.
 4. Bullets must be 개조식 — concise phrases, NOT full sentences. Max 6 bullets per section
 5. overall_accuracy is 0–100 (your honest confidence, not aspirational)
 6. feedback: note any limitations, truncated content, or areas needing manual review (max 3 sentences)`

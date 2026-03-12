@@ -89,7 +89,9 @@ export function mapToEvidenceRows(
   result: ExtractionResult,
   literatureId: string
 ): Omit<EmpiricalEvidence, 'id' | 'created_at'>[] {
-  return (result.empirical_evidence || []).map((ev, index) => ({
+  return (result.empirical_evidence || [])
+    .filter((ev) => ev.metric_value != null && ev.metric_value !== '')
+    .map((ev, index) => ({
     literature_id: literatureId,
     evidence_text: ev.evidence_text,
     evidence_text_korean: ev.evidence_text_korean ?? null,
