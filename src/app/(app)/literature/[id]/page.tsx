@@ -6,6 +6,7 @@ import { EvidenceBox } from '@/components/literature/EvidenceBox'
 import { PdfViewerWrapper } from '@/components/literature/PdfViewerWrapper'
 import { RetryExtract } from '@/components/literature/RetryExtract'
 import { CausalDiagram } from '@/components/literature/CausalDiagram'
+import { UserNotes } from '@/components/literature/UserNotes'
 import { Badge } from '@/components/ui/Badge'
 import { formatAuthors, formatYear } from '@/lib/utils/format'
 import type { LiteratureContent, EmpiricalEvidence } from '@/types/literature'
@@ -144,6 +145,9 @@ export default async function LiteratureDetailPage({
               {lit.causal_paths && (
                 <CausalDiagram paths={lit.causal_paths as any} />
               )}
+
+              {/* Personal notes */}
+              <UserNotes literatureId={lit.id} initialNotes={lit.user_notes} />
 
               {/* Content sections */}
               {sections.length > 0 ? (

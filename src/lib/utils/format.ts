@@ -2,7 +2,7 @@ export function formatAuthors(authors?: string[] | null): string {
   if (!authors || authors.length === 0) return '저자 미상'
   if (authors.length === 1) return authors[0]
   if (authors.length === 2) return authors.join(', ')
-  return `${authors[0]} 외 ${authors.length - 1}명`
+  return `${authors[0]} et al.`
 }
 
 export function formatYear(year?: number | null): string {

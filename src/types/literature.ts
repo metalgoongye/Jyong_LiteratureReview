@@ -51,6 +51,7 @@ export interface Literature {
   extraction_status: ExtractionStatus
   extraction_accuracy?: number | null
   ai_feedback?: string | null
+  user_notes?: string | null
   ai_model_used?: string | null
   extraction_prompt_id?: string | null
   created_at: string
