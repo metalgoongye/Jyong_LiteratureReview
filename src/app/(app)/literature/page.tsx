@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { LiteratureCard } from '@/components/literature/LiteratureCard'
+import { LiteratureTable } from '@/components/literature/LiteratureTable'
 import Link from 'next/link'
 import { RESEARCH_FIELDS } from '@/types/literature'
 
@@ -7,6 +8,7 @@ interface SearchParams {
   field?: string
   year?: string
   search?: string
+  view?: string
 }
 
 export default async function LiteratureListPage({
@@ -133,15 +135,43 @@ export default async function LiteratureListPage({
             <h1 className="text-xl font-semibold">문헌 목록</h1>
             <p className="text-xs opacity-40 mt-0.5">{items.length}개 문헌</p>
           </div>
-          <Link href="/upload" className="glass-button-primary px-4 py-2 text-sm rounded-xl">
-            + 추가
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* View toggle */}
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.1)' }}>
+              <Link
+                href={`/literature${sp.field ? `?field=${encodeURIComponent(sp.field)}` : ''}${sp.year ? `?year=${sp.year}` : ''}${sp.search ? `?search=${encodeURIComponent(sp.search)}` : ''}`}
+                className="px-3 py-1.5 transition-colors"
+                style={{ background: sp.view !== 'table' ? 'rgba(0,0,0,0.08)' : 'transparent' }}
+                title="아이콘 보기"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: sp.view !== 'table' ? 1 : 0.4 }}>
+                  <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </Link>
+              <Link
+                href={`/literature?view=table${sp.field ? `&field=${encodeURIComponent(sp.field)}` : ''}${sp.year ? `&year=${sp.year}` : ''}${sp.search ? `&search=${encodeURIComponent(sp.search)}` : ''}`}
+                className="px-3 py-1.5 transition-colors"
+                style={{ background: sp.view === 'table' ? 'rgba(0,0,0,0.08)' : 'transparent' }}
+                title="자세히 보기"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: sp.view === 'table' ? 1 : 0.4 }}>
+                  <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </Link>
+            </div>
+            <Link href="/upload" className="glass-button-primary px-4 py-2 text-sm rounded-xl">
+              + 추가
+            </Link>
+          </div>
         </div>
 
         {items.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <p className="opacity-40 text-sm">문헌이 없습니다</p>
           </div>
+        ) : sp.view === 'table' ? (
+          <LiteratureTable items={items} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {items.map((lit) => (
