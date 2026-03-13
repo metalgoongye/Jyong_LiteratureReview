@@ -8,6 +8,13 @@ interface ContentSectionProps {
   language: PaperLanguage
 }
 
+function dispatchPageSelect(pageRef: string | null | undefined) {
+  if (!pageRef) return
+  const match = pageRef.match(/\d+/)
+  if (!match) return
+  window.dispatchEvent(new CustomEvent('pdf-page-select', { detail: { page: parseInt(match[0]) } }))
+}
+
 export function ContentSection({ section, language }: ContentSectionProps) {
   const label = SECTION_LABELS[section.section_type] || section.section_type
   const originals = section.bullets_original || []
@@ -23,7 +30,13 @@ export function ContentSection({ section, language }: ContentSectionProps) {
       </h4>
       <div className="flex flex-col gap-3">
         {originals.map((bullet, i) => (
-          <div key={i} className="flex gap-3">
+          <div
+            key={i}
+            className="flex gap-3"
+            onClick={() => dispatchPageSelect(bullet.page_ref)}
+            style={{ cursor: bullet.page_ref ? 'pointer' : 'default' }}
+            title={bullet.page_ref ? `PDF p.${bullet.page_ref}로 이동` : undefined}
+          >
             <span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#0a0a0a', opacity: 0.3 }} />
             <div className="flex-1 min-w-0">
               {/* Original text (black) */}

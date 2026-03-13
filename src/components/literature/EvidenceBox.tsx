@@ -6,6 +6,13 @@ interface EvidenceBoxProps {
   evidence: EmpiricalEvidence[]
 }
 
+function dispatchPageSelect(pageRef: string | null | undefined) {
+  if (!pageRef) return
+  const match = pageRef.match(/\d+/)
+  if (!match) return
+  window.dispatchEvent(new CustomEvent('pdf-page-select', { detail: { page: parseInt(match[0]) } }))
+}
+
 export function EvidenceBox({ evidence }: EvidenceBoxProps) {
   if (!evidence || evidence.length === 0) return null
 
@@ -22,7 +29,13 @@ export function EvidenceBox({ evidence }: EvidenceBoxProps) {
       </h4>
       <div className="flex flex-col gap-2.5">
         {evidence.map((ev) => (
-          <div key={ev.id} className="evidence-box">
+          <div
+            key={ev.id}
+            className="evidence-box"
+            onClick={() => dispatchPageSelect(ev.page_reference)}
+            style={{ cursor: ev.page_reference ? 'pointer' : 'default' }}
+            title={ev.page_reference ? `PDF p.${ev.page_reference}로 이동` : undefined}
+          >
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm font-medium leading-snug">{ev.evidence_text}</p>
               {ev.page_reference && (

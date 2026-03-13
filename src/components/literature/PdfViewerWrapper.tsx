@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
 
 interface PdfViewerWrapperProps {
@@ -12,6 +12,7 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     async function fetchSignedUrl() {
@@ -29,6 +30,19 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
     }
     fetchSignedUrl()
   }, [storagePath])
+
+  const handlePageSelect = useCallback((e: Event) => {
+    const page = (e as CustomEvent<{ page: number }>).detail.page
+    if (iframeRef.current && pdfUrl) {
+      // Navigate iframe to the specific page using URL fragment
+      iframeRef.current.src = `${pdfUrl}#page=${page}&toolbar=1`
+    }
+  }, [pdfUrl])
+
+  useEffect(() => {
+    window.addEventListener('pdf-page-select', handlePageSelect)
+    return () => window.removeEventListener('pdf-page-select', handlePageSelect)
+  }, [handlePageSelect])
 
   if (loading) {
     return (
@@ -48,7 +62,8 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
 
   return (
     <iframe
-      src={`${pdfUrl}#toolbar=1`}
+      ref={iframeRef}
+      src={pdfUrl ? `${pdfUrl}#toolbar=1` : undefined}
       className="w-full h-full"
       title="PDF Viewer"
       style={{ minHeight: '600px' }}
