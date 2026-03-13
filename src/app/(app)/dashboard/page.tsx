@@ -9,26 +9,26 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/login')
 
-  const { data: literature } = await supabase
+  // Stats query — all literature (no limit)
+  const { data: allLiterature } = await supabase
     .from('literature')
-    .select('*')
+    .select('extraction_status, extraction_accuracy, fields')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(12)
+    .is('deleted_at', null)
 
-  const items = literature || []
-  const total = items.length
-  const completed = items.filter((i) => i.extraction_status === 'completed').length
+  const allItems = allLiterature || []
+  const total = allItems.length
+  const completed = allItems.filter((i) => i.extraction_status === 'completed').length
   const avgAccuracy =
     completed > 0
-      ? items
+      ? allItems
           .filter((i) => i.extraction_accuracy != null)
           .reduce((acc, i) => acc + (i.extraction_accuracy || 0), 0) / completed
       : null
 
-  // Field distribution
+  // Field distribution (all items)
   const fieldCount: Record<string, number> = {}
-  items.forEach((lit) => {
+  allItems.forEach((lit) => {
     ;(lit.fields || []).forEach((f: string) => {
       fieldCount[f] = (fieldCount[f] || 0) + 1
     })
@@ -36,6 +36,17 @@ export default async function DashboardPage() {
   const topFields = Object.entries(fieldCount)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
+
+  // Recent cards — limited to 12
+  const { data: literature } = await supabase
+    .from('literature')
+    .select('*')
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(12)
+
+  const items = literature || []
 
   return (
     <div className="p-8">
