@@ -52,28 +52,31 @@ export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
       </div>
 
       {/* AI accuracy */}
-      {lit.extraction_accuracy != null && (
-        <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs opacity-40">AI 추출 정확도</p>
-            <Badge
-              variant={
-                lit.extraction_accuracy >= 90
-                  ? 'success'
-                  : lit.extraction_accuracy >= 70
-                  ? 'warning'
-                  : 'error'
-              }
-            >
-              {lit.extraction_accuracy.toFixed(1)}%
-            </Badge>
+      {lit.extraction_accuracy != null && (() => {
+        const acc = lit.extraction_accuracy!
+        const band = acc >= 90 ? 3 : acc >= 70 ? 7 : 12
+        const lo = Math.max(0, acc - band).toFixed(0)
+        const hi = Math.min(100, acc + band).toFixed(0)
+        return (
+          <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs opacity-40">AI 추출 정확도</p>
+              <Badge
+                variant={
+                  acc >= 90 ? 'success' : acc >= 70 ? 'warning' : 'error'
+                }
+              >
+                {acc.toFixed(1)}%
+              </Badge>
+            </div>
+            <p className="text-xs opacity-30 mb-2">추정 범위 {lo}% ~ {hi}%</p>
+            <ProgressBar value={acc} size="sm" />
+            {lit.ai_feedback && (
+              <p className="text-xs opacity-40 mt-2 leading-relaxed">{lit.ai_feedback}</p>
+            )}
           </div>
-          <ProgressBar value={lit.extraction_accuracy} size="sm" />
-          {lit.ai_feedback && (
-            <p className="text-xs opacity-40 mt-2 leading-relaxed">{lit.ai_feedback}</p>
-          )}
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

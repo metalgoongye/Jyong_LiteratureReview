@@ -68,6 +68,17 @@ export default async function DashboardPage() {
           <p className="text-2xl font-semibold">
             {avgAccuracy !== null ? `${avgAccuracy.toFixed(1)}%` : '-'}
           </p>
+          {avgAccuracy !== null && (() => {
+            const band = avgAccuracy >= 90 ? 3 : avgAccuracy >= 70 ? 7 : 12
+            const lo = Math.max(0, avgAccuracy - band).toFixed(0)
+            const hi = Math.min(100, avgAccuracy + band).toFixed(0)
+            const color = avgAccuracy >= 90 ? '#16a34a' : avgAccuracy >= 70 ? '#d97706' : '#dc2626'
+            return (
+              <p className="text-xs mt-1" style={{ color, opacity: 0.75 }}>
+                {lo}% ~ {hi}%
+              </p>
+            )
+          })()}
         </div>
       </div>
 
