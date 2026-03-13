@@ -167,3 +167,9 @@ body {
 @media (prefers-color-scheme: dark) {
   ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
 }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  .print-area { box-shadow: none !important; border: none !important; }
+}

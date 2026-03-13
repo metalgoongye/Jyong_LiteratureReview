@@ -97,7 +97,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="w-56 flex-shrink-0 h-screen sticky top-0 flex flex-col"
+      className="no-print w-56 flex-shrink-0 h-screen sticky top-0 flex flex-col"
       style={{ borderRight: '1px solid rgba(0,0,0,0.06)' }}
     >
       {/* Logo */}
