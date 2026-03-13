@@ -10,8 +10,8 @@ export async function uploadFileToStorage(
   contentType: string
 ): Promise<string> {
   const supabase = await createClient()
-  const safeFilename = filename.replace(/\s+/g, '_')
-  const filePath = `${userId}/${literatureId}/${safeFilename}`
+  const ext = filename.split('.').pop() || 'bin'
+  const filePath = `${userId}/${literatureId}/file.${ext}`
 
   const { error } = await supabase.storage.from(BUCKET).upload(filePath, buffer, {
     contentType,
