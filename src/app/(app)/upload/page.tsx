@@ -83,13 +83,16 @@ export default function UploadPage() {
           const formData = new FormData()
           formData.append('files', file)
           const res = await fetch('/api/upload', { method: 'POST', body: formData })
-          if (!res.ok) {
-            const data = await res.json()
-            throw new Error(data.error)
+          const text = await res.text()
+          let data: { literatureIds?: string[]; batchJobId?: string; error?: string }
+          try {
+            data = JSON.parse(text)
+          } catch {
+            throw new Error(`서버 오류 (${res.status}): 업로드 실패`)
           }
-          const data = await res.json()
-          allLiteratureIds.push(...data.literatureIds)
-          if (!firstBatchJobId) firstBatchJobId = data.batchJobId
+          if (!res.ok) throw new Error(data.error || '업로드 실패')
+          allLiteratureIds.push(...(data.literatureIds || []))
+          if (!firstBatchJobId && data.batchJobId) firstBatchJobId = data.batchJobId
         }
         result = { literatureIds: allLiteratureIds, batchJobId: firstBatchJobId }
       }

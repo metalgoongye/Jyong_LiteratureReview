@@ -128,22 +128,28 @@ export async function POST(request: NextRequest) {
 
     if (litError || !lit) continue
 
-    // Upload file to storage
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    const storagePath = await uploadFileToStorage(
-      buffer,
-      user.id,
-      lit.id,
-      file.name,
-      file.type
-    )
+    try {
+      // Upload file to storage
+      const arrayBuffer = await file.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+      const storagePath = await uploadFileToStorage(
+        buffer,
+        user.id,
+        lit.id,
+        file.name,
+        file.type
+      )
 
-    // Update with storage path
-    await supabase
-      .from('literature')
-      .update({ storage_path: storagePath })
-      .eq('id', lit.id)
+      // Update with storage path
+      await supabase
+        .from('literature')
+        .update({ storage_path: storagePath })
+        .eq('id', lit.id)
+    } catch (storageError) {
+      const errMsg = storageError instanceof Error ? storageError.message : 'Storage upload failed'
+      await supabase.from('literature').update({ extraction_status: 'failed', ai_feedback: errMsg }).eq('id', lit.id)
+      return NextResponse.json({ error: `파일 저장 실패: ${errMsg}` }, { status: 500 })
+    }
 
     literatureIds.push(lit.id)
 
