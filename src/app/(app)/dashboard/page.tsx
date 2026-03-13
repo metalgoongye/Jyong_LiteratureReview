@@ -74,11 +74,16 @@ export default async function DashboardPage() {
             const hi = Math.min(100, avgAccuracy + band).toFixed(0)
             const color = avgAccuracy >= 90 ? '#16a34a' : avgAccuracy >= 70 ? '#d97706' : '#dc2626'
             return (
-              <p className="text-xs mt-1" style={{ color, opacity: 0.75 }}>
+              <p className="text-xs mt-0.5" style={{ color, opacity: 0.75 }}>
                 {lo}% ~ {hi}%
               </p>
             )
           })()}
+          <div className="flex gap-3 mt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '10px' }}>
+            <span className="text-xs" style={{ color: '#16a34a', opacity: 0.8 }}>● 90%+ 우수</span>
+            <span className="text-xs" style={{ color: '#d97706', opacity: 0.8 }}>● 70–89% 보통</span>
+            <span className="text-xs" style={{ color: '#dc2626', opacity: 0.8 }}>● ~69% 미흡</span>
+          </div>
         </div>
       </div>
 

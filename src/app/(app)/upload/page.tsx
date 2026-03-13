@@ -77,14 +77,21 @@ export default function UploadPage() {
           setLoading(false)
           return
         }
-        const formData = new FormData()
-        uploadFiles.forEach((f) => formData.append('files', f))
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        if (!res.ok) {
+        const allLiteratureIds: string[] = []
+        let firstBatchJobId = ''
+        for (const file of uploadFiles) {
+          const formData = new FormData()
+          formData.append('files', file)
+          const res = await fetch('/api/upload', { method: 'POST', body: formData })
+          if (!res.ok) {
+            const data = await res.json()
+            throw new Error(data.error)
+          }
           const data = await res.json()
-          throw new Error(data.error)
+          allLiteratureIds.push(...data.literatureIds)
+          if (!firstBatchJobId) firstBatchJobId = data.batchJobId
         }
-        result = await res.json()
+        result = { literatureIds: allLiteratureIds, batchJobId: firstBatchJobId }
       }
 
       setUploadResult(result)

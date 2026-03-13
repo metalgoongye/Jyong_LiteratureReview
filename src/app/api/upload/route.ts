@@ -129,25 +129,21 @@ export async function POST(request: NextRequest) {
     if (litError || !lit) continue
 
     // Upload file to storage
-    try {
-      const arrayBuffer = await file.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      const storagePath = await uploadFileToStorage(
-        buffer,
-        user.id,
-        lit.id,
-        file.name,
-        file.type
-      )
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const storagePath = await uploadFileToStorage(
+      buffer,
+      user.id,
+      lit.id,
+      file.name,
+      file.type
+    )
 
-      // Update with storage path
-      await supabase
-        .from('literature')
-        .update({ storage_path: storagePath })
-        .eq('id', lit.id)
-    } catch (storageError) {
-      console.error('Storage upload failed:', storageError)
-    }
+    // Update with storage path
+    await supabase
+      .from('literature')
+      .update({ storage_path: storagePath })
+      .eq('id', lit.id)
 
     literatureIds.push(lit.id)
 
