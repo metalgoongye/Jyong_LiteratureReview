@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import jsPDF from 'jspdf'
 
 interface Section {
   heading: string
@@ -142,7 +143,65 @@ export default function SynthesisPage() {
   }
 
   function exportPDF() {
-    window.print()
+    if (!result) return
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const pageW = doc.internal.pageSize.getWidth()
+    const margin = 20
+    const maxW = pageW - margin * 2
+    let y = 20
+
+    const addText = (text: string, fontSize: number, bold: boolean, color: [number, number, number] = [0, 0, 0]) => {
+      doc.setFontSize(fontSize)
+      doc.setFont('helvetica', bold ? 'bold' : 'normal')
+      doc.setTextColor(...color)
+      const lines = doc.splitTextToSize(text, maxW)
+      lines.forEach((line: string) => {
+        if (y > 270) { doc.addPage(); y = 20 }
+        doc.text(line, margin, y)
+        y += fontSize * 0.45
+      })
+    }
+
+    const addSpacing = (mm: number) => { y += mm }
+
+    // Title
+    addText(result.title, 16, true)
+    addSpacing(6)
+
+    // Hypothesis
+    addText('Hypothesis:', 10, true, [80, 80, 80])
+    addSpacing(1)
+    addText(result.hypothesis, 10, false, [80, 80, 80])
+    addSpacing(8)
+
+    // Divider
+    doc.setDrawColor(220, 220, 220)
+    doc.line(margin, y, pageW - margin, y)
+    addSpacing(8)
+
+    // Sections
+    result.sections.forEach((section) => {
+      addText(section.heading, 12, true)
+      addSpacing(3)
+      addText(section.content, 10, false)
+      addSpacing(7)
+    })
+
+    // References
+    if (result.references.length > 0) {
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, y, pageW - margin, y)
+      addSpacing(8)
+      addText('References', 12, true)
+      addSpacing(4)
+      result.references.forEach((ref, i) => {
+        addText(`${i + 1}. ${ref}`, 9, false, [80, 80, 80])
+        addSpacing(2)
+      })
+    }
+
+    const filename = result.title.replace(/[^a-zA-Z0-9가-힣 ]/g, '').slice(0, 50).trim() || 'synthesis'
+    doc.save(`${filename}.pdf`)
   }
 
   function exportWord() {
@@ -159,14 +218,6 @@ export default function SynthesisPage() {
 
   return (
     <>
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; }
-          .print-area { box-shadow: none !important; border: none !important; }
-        }
-      `}</style>
-
       <div className="flex h-screen overflow-hidden">
         {/* History sidebar */}
         <aside
