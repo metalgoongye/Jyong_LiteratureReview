@@ -112,9 +112,32 @@ Return ONLY valid JSON:
       throw new Error('AI 응답 파싱 실패')
     }
 
+    // Save to DB
+    await supabase.from('syntheses').insert({
+      user_id: user.id,
+      hypothesis,
+      title: result.title,
+      result,
+    })
+
     return NextResponse.json({ result })
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Synthesis failed'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
+}
+
+export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data, error } = await supabase
+    .from('syntheses')
+    .select('id, hypothesis, title, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ syntheses: data })
 }
