@@ -64,7 +64,13 @@ Return a single JSON object with this exact schema:
   },
   "causal_paths": {
     "nodes": [{"id": string, "label": string, "type": "independent"|"mediator"|"dependent"}],
-    "edges": [{"from": string, "to": string, "coefficient": string|null, "pvalue": string|null, "direction": "+"|"-"|null}]
+    "edges": [{"from": string, "to": string, "coefficient": string|null, "pvalue": string|null, "direction": "+"|"-"|null}],
+    "methodology": {
+      "method_name": string | null,
+      "analysis_type": string | null,
+      "table_reference": string | null,
+      "page_reference": string | null
+    }
   }
 }
 
@@ -73,7 +79,7 @@ Rules:
 2. If paper language is Korean, set language="korean" and skip bullets_korean (leave as empty array)
 3. Empirical evidence: ONLY include findings with explicit numbers (%, coefficients, p-values, sample sizes, dollar amounts, effect sizes, etc.). If no concrete number exists in the paper, return empirical_evidence as an empty array []. metric_value MUST contain the actual number. evidence_text in English (one sentence with the number included), evidence_text_korean in Korean (학술체). page_reference: only if CERTAIN from [PAGE X] markers, otherwise null. Max 5 items.
 4. Bullets must be 개조식 — concise phrases, NOT full sentences. Max 4 bullets per section. Max 5 sections total. Keep JSON output compact.
-5. overall_accuracy is 0–100 (your honest confidence, not aspirational)
+5. overall_accuracy is 0–100 based on objective criteria: score ≥80 if full text is clearly readable and all major sections extractable; score 65–79 if minor gaps (truncation, missing tables); score <65 only if content is substantially incomplete or unreadable. Be consistent — do not vary score based on minor wording differences.
 6. feedback: note any limitations, truncated content, or areas needing manual review (max 3 sentences)
-7. causal_paths: Extract the causal/structural framework if present. nodes = key variables; type = "independent" (exogenous/predictor), "mediator" (intermediate pathway), "dependent" (outcome). edges = directional relationships with statistical coefficients and p-values where available. CRITICAL: If the paper uses mediation, path analysis, SEM, or multi-step regression (X→M→Y), explicitly capture ALL indirect pathways. E.g., if sprawl affects energy use THROUGH housing type and size as mediators, show edges X→M1, X→M2, M1→Y, M2→Y with coefficients. If no causal model exists, set causal_paths to null.
+7. causal_paths: Extract the causal/structural framework if present. nodes = key variables; type = "independent" (exogenous/predictor), "mediator" (intermediate pathway), "dependent" (outcome). edges = directional relationships with statistical coefficients and p-values where available. CRITICAL: If the paper uses mediation, path analysis, SEM, or multi-step regression (X→M→Y), explicitly capture ALL indirect pathways. E.g., if sprawl affects energy use THROUGH housing type and size as mediators, show edges X→M1, X→M2, M1→Y, M2→Y with coefficients. methodology: set method_name to the primary statistical method (e.g., "Binary Logit Regression", "Hierarchical OLS", "SEM", "Multilevel Model"), analysis_type to a brief description of the approach (e.g., "Indirect path analysis via housing stock mediators", "Cross-sectional logistic regression"), table_reference to the main results table with page (e.g., "Table 3 (p.18)"), page_reference to the page number only (e.g., "18"). If no causal model exists, set causal_paths to null.
 8. Tables & figures: Actively extract quantitative results from TABLES and FIGURES — regression coefficients, odds ratios, marginal effects, model statistics. Do not rely only on text. Include table/figure reference in page_reference (e.g., "Table 3" or "p.15 Table 2").`

@@ -73,5 +73,11 @@ export interface ExtractionResult {
   causal_paths?: {
     nodes: Array<{ id: string; label: string; type: 'independent' | 'mediator' | 'dependent' }>
     edges: Array<{ from: string; to: string; coefficient?: string | null; pvalue?: string | null; direction?: '+' | '-' | null }>
+    methodology?: {
+      method_name?: string | null
+      analysis_type?: string | null
+      table_reference?: string | null
+      page_reference?: string | null
+    } | null
   } | null
 }

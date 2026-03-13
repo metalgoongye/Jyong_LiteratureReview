@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
 
 interface PdfViewerWrapperProps {
@@ -12,7 +12,8 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [iframeKey, setIframeKey] = useState(0)
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchSignedUrl() {
@@ -21,6 +22,7 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
         if (!res.ok) throw new Error('Failed to get PDF URL')
         const data = await res.json()
         setPdfUrl(data.url)
+        setCurrentSrc(`${data.url}#toolbar=1`)
       } catch (err) {
         setError('PDF를 불러오지 못했습니다.')
         console.error(err)
@@ -33,9 +35,10 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
 
   const handlePageSelect = useCallback((e: Event) => {
     const page = (e as CustomEvent<{ page: number }>).detail.page
-    if (iframeRef.current && pdfUrl) {
-      // Navigate iframe to the specific page using URL fragment
-      iframeRef.current.src = `${pdfUrl}#page=${page}&toolbar=1`
+    if (pdfUrl) {
+      // Force iframe remount by changing key — makes the browser fully reload at the target page
+      setCurrentSrc(`${pdfUrl}#page=${page}&toolbar=1`)
+      setIframeKey(k => k + 1)
     }
   }, [pdfUrl])
 
@@ -62,8 +65,8 @@ export function PdfViewerWrapper({ storagePath, literatureId }: PdfViewerWrapper
 
   return (
     <iframe
-      ref={iframeRef}
-      src={pdfUrl ? `${pdfUrl}#toolbar=1` : undefined}
+      key={iframeKey}
+      src={currentSrc ?? undefined}
       className="w-full h-full"
       title="PDF Viewer"
       style={{ minHeight: '600px' }}

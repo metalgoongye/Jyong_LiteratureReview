@@ -14,9 +14,17 @@ export interface CausalEdge {
   direction?: '+' | '-' | null
 }
 
+export interface CausalMethodology {
+  method_name?: string | null
+  analysis_type?: string | null
+  table_reference?: string | null
+  page_reference?: string | null
+}
+
 export interface CausalPaths {
   nodes: CausalNode[]
   edges: CausalEdge[]
+  methodology?: CausalMethodology | null
 }
 
 const NODE_W = 150
@@ -26,8 +34,15 @@ const ROW_GAP = 72
 const PAD_X = 16
 const PAD_Y = 28
 
+function dispatchPageSelect(ref: string | null | undefined) {
+  if (!ref) return
+  const match = ref.match(/\d+/)
+  if (!match) return
+  window.dispatchEvent(new CustomEvent('pdf-page-select', { detail: { page: parseInt(match[0]) } }))
+}
+
 export function CausalDiagram({ paths }: { paths: CausalPaths }) {
-  const { nodes, edges } = paths
+  const { nodes, edges, methodology } = paths
   if (!nodes || nodes.length === 0) return null
 
   const COLS = ['independent', 'mediator', 'dependent'] as const
@@ -201,6 +216,42 @@ export function CausalDiagram({ paths }: { paths: CausalPaths }) {
             )}
           </svg>
         </div>
+
+        {/* Methodology row */}
+        {methodology && (methodology.method_name || methodology.analysis_type || methodology.table_reference) && (
+          <div
+            className="px-3 pb-3 flex flex-wrap items-center gap-2"
+            style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}
+          >
+            <span className="text-xs opacity-40 font-medium">분석방법</span>
+            {methodology.method_name && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: 'rgba(99,102,241,0.1)', color: '#4338ca' }}
+              >
+                {methodology.method_name}
+              </span>
+            )}
+            {methodology.analysis_type && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(0,0,0,0.05)', color: 'rgba(0,0,0,0.5)' }}
+              >
+                {methodology.analysis_type}
+              </span>
+            )}
+            {methodology.table_reference && (
+              <button
+                onClick={() => dispatchPageSelect(methodology.page_reference || methodology.table_reference)}
+                className="text-xs px-2 py-0.5 rounded-full font-mono transition-opacity hover:opacity-80"
+                style={{ background: 'rgba(212,255,0,0.3)', color: '#5a6000', cursor: 'pointer' }}
+                title={`PDF ${methodology.table_reference}로 이동`}
+              >
+                {methodology.table_reference}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
