@@ -81,15 +81,15 @@ Rate extraction quality:
 - field_completeness: how complete are the extracted fields overall (0-100)
 - overall: overall extraction quality (0-100)
 
-=== PART B: SIX Is — rate each DEFECT (0=none, 100=severe) ===
+=== PART B: RESEARCH QUALITY — rate each dimension (0=very poor, 100=excellent) ===
 Evaluate the RESEARCH PAPER ITSELF (not the extraction):
-1. Inaccurate: factual errors, wrong numbers, misattributed claims in the paper
-2. Imprecise: vague claims, missing units, no confidence intervals, fuzzy measurements
-3. Inconsistent: logical contradictions — if A=B and B=C then A=C must hold; internal data contradictions
-4. Incoherent: poor section flow, conclusions unsupported by evidence presented, disorganized argument
-5. Imperfect: holistic research design quality — your overall judgment of the paper's completeness and rigor
+1. Accurate: factual correctness, numbers and claims correctly stated and attributed (100 = no errors)
+2. Precise: specificity of claims, units provided, confidence intervals/effect sizes reported (100 = very precise)
+3. Consistent: logical coherence — A=B and B=C implies A=C; no internal data contradictions (100 = fully consistent)
+4. Coherent: section flow, conclusions well-supported by evidence, organized argument (100 = very coherent)
+5. Overall: holistic research design quality — your overall judgment of the paper's completeness and rigor (100 = excellent)
 
-For any non-zero score, give a brief specific reason (1-2 sentences). For zero scores use empty string.
+For any score below 80, give a brief specific reason (1-2 sentences). For scores 80+ use empty string.
 
 Return ONLY valid JSON (no markdown):
 {
@@ -99,16 +99,16 @@ Return ONLY valid JSON (no markdown):
     "overall": <number>
   },
   "six_is": {
-    "inaccurate": <number>,
-    "inaccurate_reason": "<string>",
-    "imprecise": <number>,
-    "imprecise_reason": "<string>",
-    "inconsistent": <number>,
-    "inconsistent_reason": "<string>",
-    "incoherent": <number>,
-    "incoherent_reason": "<string>",
-    "imperfect": <number>,
-    "imperfect_reason": "<string>"
+    "accurate": <number>,
+    "accurate_reason": "<string>",
+    "precise": <number>,
+    "precise_reason": "<string>",
+    "consistent": <number>,
+    "consistent_reason": "<string>",
+    "coherent": <number>,
+    "coherent_reason": "<string>",
+    "overall": <number>,
+    "overall_reason": "<string>"
   }
 }`
 
@@ -124,11 +124,11 @@ Return ONLY valid JSON (no markdown):
     let parsed: {
       accuracy: { abstract_alignment: number | null; field_completeness: number; overall: number }
       six_is: {
-        inaccurate: number; inaccurate_reason: string
-        imprecise: number; imprecise_reason: string
-        inconsistent: number; inconsistent_reason: string
-        incoherent: number; incoherent_reason: string
-        imperfect: number; imperfect_reason: string
+        accurate: number; accurate_reason: string
+        precise: number; precise_reason: string
+        consistent: number; consistent_reason: string
+        coherent: number; coherent_reason: string
+        overall: number; overall_reason: string
       }
     }
     try {
@@ -149,26 +149,26 @@ Return ONLY valid JSON (no markdown):
 
     const { accuracy, six_is } = parsed
 
-    // Derive incomplete and grade from 4 base indicators
-    const baseTotal = six_is.inaccurate + six_is.imprecise + six_is.inconsistent + six_is.incoherent
-    const incomplete = baseTotal / 4
+    // Derive average from 4 base indicators (higher = better)
+    const baseTotal = six_is.accurate + six_is.precise + six_is.consistent + six_is.coherent
+    const average = baseTotal / 4
     const grade =
-      baseTotal <= 80 ? 'A' : baseTotal <= 160 ? 'B' : baseTotal <= 240 ? 'C' : 'D'
+      baseTotal >= 320 ? 'A' : baseTotal >= 240 ? 'B' : baseTotal >= 160 ? 'C' : 'D'
 
     const verifiedAt = new Date().toISOString()
 
     const six_is_scores = {
-      inaccurate: six_is.inaccurate,
-      inaccurate_reason: six_is.inaccurate_reason,
-      imprecise: six_is.imprecise,
-      imprecise_reason: six_is.imprecise_reason,
-      inconsistent: six_is.inconsistent,
-      inconsistent_reason: six_is.inconsistent_reason,
-      incoherent: six_is.incoherent,
-      incoherent_reason: six_is.incoherent_reason,
-      incomplete,
-      imperfect: six_is.imperfect,
-      imperfect_reason: six_is.imperfect_reason,
+      accurate: six_is.accurate,
+      accurate_reason: six_is.accurate_reason,
+      precise: six_is.precise,
+      precise_reason: six_is.precise_reason,
+      consistent: six_is.consistent,
+      consistent_reason: six_is.consistent_reason,
+      coherent: six_is.coherent,
+      coherent_reason: six_is.coherent_reason,
+      average,
+      overall: six_is.overall,
+      overall_reason: six_is.overall_reason,
       base_total: baseTotal,
       grade,
       verified_at: verifiedAt,

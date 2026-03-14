@@ -11,10 +11,10 @@ interface MetadataPanelProps {
 }
 
 const SIX_IS_INDICATORS = [
-  { key: 'inaccurate' as const, label: 'Inaccurate', reasonKey: 'inaccurate_reason' as const },
-  { key: 'imprecise' as const, label: 'Imprecise', reasonKey: 'imprecise_reason' as const },
-  { key: 'inconsistent' as const, label: 'Inconsistent', reasonKey: 'inconsistent_reason' as const },
-  { key: 'incoherent' as const, label: 'Incoherent', reasonKey: 'incoherent_reason' as const },
+  { key: 'accurate' as const, label: 'Accurate', reasonKey: 'accurate_reason' as const },
+  { key: 'precise' as const, label: 'Precise', reasonKey: 'precise_reason' as const },
+  { key: 'consistent' as const, label: 'Consistent', reasonKey: 'consistent_reason' as const },
+  { key: 'coherent' as const, label: 'Coherent', reasonKey: 'coherent_reason' as const },
 ]
 
 export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
@@ -157,7 +157,7 @@ export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
                         : '#dc2626',
                   }}
                 >
-                  등급 {sixIs.grade} &nbsp;{sixIs.base_total}/400
+                  등급 {sixIs.grade} &nbsp;{sixIs.base_total}/400 pts
                 </span>
               </div>
 
@@ -165,7 +165,7 @@ export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
                 {SIX_IS_INDICATORS.map(({ key, label, reasonKey }) => {
                   const val = sixIs[key]
                   const reason = sixIs[reasonKey]
-                  const barColor = val <= 20 ? '#16a34a' : val <= 50 ? '#d97706' : '#dc2626'
+                  const barColor = val >= 80 ? '#16a34a' : val >= 50 ? '#d97706' : '#dc2626'
                   return (
                     <div key={key}>
                       <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
                           {val}
                         </span>
                       </div>
-                      {reason && val > 0 && (
+                      {reason && val < 80 && (
                         <p className="text-xs mt-0.5 ml-[88px] leading-relaxed" style={{ color: '#888' }}>
                           {reason}
                         </p>
@@ -196,16 +196,16 @@ export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
                 style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs opacity-35">Incomplete (파생)</span>
-                  <span className="text-xs opacity-50">{sixIs.incomplete.toFixed(1)}/100</span>
+                  <span className="text-xs opacity-35">평균 (4개 지표)</span>
+                  <span className="text-xs opacity-50">{sixIs.average.toFixed(1)}/100</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs opacity-35">Imperfect (종합)</span>
-                  <span className="text-xs opacity-50">{sixIs.imperfect}/100</span>
+                  <span className="text-xs opacity-35">Overall (종합)</span>
+                  <span className="text-xs opacity-50">{sixIs.overall}/100</span>
                 </div>
-                {sixIs.imperfect_reason && (
+                {sixIs.overall_reason && (
                   <p className="text-xs leading-relaxed" style={{ color: '#aaa' }}>
-                    {sixIs.imperfect_reason}
+                    {sixIs.overall_reason}
                   </p>
                 )}
               </div>

@@ -52,12 +52,12 @@ export interface Literature {
   extraction_accuracy?: number | null
   ai_feedback?: string | null
   six_is_scores?: {
-    inaccurate: number; inaccurate_reason?: string
-    imprecise: number; imprecise_reason?: string
-    inconsistent: number; inconsistent_reason?: string
-    incoherent: number; incoherent_reason?: string
-    incomplete: number
-    imperfect: number; imperfect_reason?: string
+    accurate: number; accurate_reason?: string
+    precise: number; precise_reason?: string
+    consistent: number; consistent_reason?: string
+    coherent: number; coherent_reason?: string
+    average: number
+    overall: number; overall_reason?: string
     base_total: number
     grade: string
     verified_at: string
