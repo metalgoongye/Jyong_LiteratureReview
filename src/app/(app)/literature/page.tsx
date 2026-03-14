@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { LiteratureCard } from '@/components/literature/LiteratureCard'
 import { LiteratureTable } from '@/components/literature/LiteratureTable'
+import { LiteratureSearch } from '@/components/literature/LiteratureSearch'
 import Link from 'next/link'
 import { RESEARCH_FIELDS } from '@/types/literature'
 
@@ -35,14 +36,19 @@ export default async function LiteratureListPage({
     query = query.eq('year', parseInt(sp.year))
   }
 
-  if (sp.search) {
-    query = query.or(
-      `title.ilike.%${sp.search}%,journal_name.ilike.%${sp.search}%,authors.cs.{"${sp.search}"}`
-    )
-  }
+  const { data: literature } = await query.limit(200)
 
-  const { data: literature } = await query.limit(50)
-  const items = literature || []
+  // Client-side search across title, authors, journal
+  const q = sp.search?.toLowerCase() || ''
+  const items = (literature || []).filter((lit) => {
+    if (!q) return true
+    const inTitle = (lit.title || '').toLowerCase().includes(q)
+    const inJournal = (lit.journal_name || '').toLowerCase().includes(q)
+    const inAuthors = (lit.authors || []).some((a: string) =>
+      a.toLowerCase().includes(q)
+    )
+    return inTitle || inJournal || inAuthors
+  })
 
   // Get all unique years for filter
   const { data: allLit } = await supabase
@@ -63,23 +69,6 @@ export default async function LiteratureListPage({
         style={{ borderRight: '1px solid rgba(0,0,0,0.06)' }}
       >
         <h2 className="text-xs font-semibold uppercase tracking-wider opacity-40 mb-4">필터</h2>
-
-        {/* Search */}
-        <div className="mb-5">
-          <form>
-            <input
-              name="search"
-              defaultValue={sp.search || ''}
-              placeholder="제목, 저자 검색..."
-              className="w-full px-3 py-2 text-xs rounded-lg"
-              style={{
-                background: 'rgba(0,0,0,0.05)',
-                border: '1px solid rgba(0,0,0,0.08)',
-                outline: 'none',
-              }}
-            />
-          </form>
-        </div>
 
         {/* Field filter */}
         <div className="mb-5">
@@ -130,7 +119,8 @@ export default async function LiteratureListPage({
 
       {/* Main content */}
       <main className="flex-1 overflow-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-semibold">문헌 목록</h1>
             <p className="text-xs opacity-40 mt-0.5">{items.length}개 문헌</p>
@@ -139,7 +129,7 @@ export default async function LiteratureListPage({
             {/* View toggle */}
             <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.1)' }}>
               <Link
-                href={`/literature${sp.field ? `?field=${encodeURIComponent(sp.field)}` : ''}${sp.year ? `?year=${sp.year}` : ''}${sp.search ? `?search=${encodeURIComponent(sp.search)}` : ''}`}
+                href={`/literature${sp.field ? `?field=${encodeURIComponent(sp.field)}` : ''}${sp.year ? `?year=${sp.year}` : ''}`}
                 className="px-3 py-1.5 transition-colors"
                 style={{ background: sp.view !== 'table' ? 'rgba(0,0,0,0.08)' : 'transparent' }}
                 title="아이콘 보기"
@@ -150,7 +140,7 @@ export default async function LiteratureListPage({
                 </svg>
               </Link>
               <Link
-                href={`/literature?view=table${sp.field ? `&field=${encodeURIComponent(sp.field)}` : ''}${sp.year ? `&year=${sp.year}` : ''}${sp.search ? `&search=${encodeURIComponent(sp.search)}` : ''}`}
+                href={`/literature?view=table${sp.field ? `&field=${encodeURIComponent(sp.field)}` : ''}${sp.year ? `&year=${sp.year}` : ''}`}
                 className="px-3 py-1.5 transition-colors"
                 style={{ background: sp.view === 'table' ? 'rgba(0,0,0,0.08)' : 'transparent' }}
                 title="자세히 보기"
@@ -166,19 +156,27 @@ export default async function LiteratureListPage({
           </div>
         </div>
 
-        {items.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <p className="opacity-40 text-sm">문헌이 없습니다</p>
-          </div>
-        ) : sp.view === 'table' ? (
-          <LiteratureTable items={items} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {items.map((lit) => (
-              <LiteratureCard key={lit.id} literature={lit} />
-            ))}
-          </div>
-        )}
+        {/* Search bar */}
+        <LiteratureSearch defaultValue={sp.search || ''} />
+
+        {/* Results */}
+        <div className="mt-4">
+          {items.length === 0 ? (
+            <div className="glass-card p-12 text-center">
+              <p className="opacity-40 text-sm">
+                {sp.search ? `"${sp.search}" 검색 결과가 없습니다` : '문헌이 없습니다'}
+              </p>
+            </div>
+          ) : sp.view === 'table' ? (
+            <LiteratureTable items={items} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {items.map((lit) => (
+                <LiteratureCard key={lit.id} literature={lit} />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )
