@@ -6,6 +6,14 @@ import { FileDropzone } from '@/components/upload/FileDropzone'
 import { BatchProgress } from '@/components/upload/BatchProgress'
 
 type Tab = 'pdf' | 'url' | 'image'
+type DuplicateAction = 'replace' | 'skip'
+
+interface DuplicateInfo {
+  filename: string
+  existingId: string
+  title?: string | null
+  action: DuplicateAction
+}
 
 const sharedStyles = `
   @keyframes gradientShift {
@@ -41,6 +49,14 @@ export default function UploadPage() {
   } | null>(null)
   const [allDone, setAllDone] = useState(false)
 
+  // Duplicate modal state
+  const [duplicates, setDuplicates] = useState<DuplicateInfo[]>([])
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [applyToAll, setApplyToAll] = useState(false)
+  const [applyToAllAction, setApplyToAllAction] = useState<DuplicateAction>('replace')
+  // files pending after duplicate check
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+
   async function handleExtractAll(literatureIds: string[]) {
     for (const id of literatureIds) {
       fetch('/api/extract', {
@@ -51,52 +67,47 @@ export default function UploadPage() {
     }
   }
 
-  async function handleUpload() {
+  async function deleteExisting(id: string) {
+    await fetch(`/api/literature/${id}`, { method: 'DELETE' }).catch(console.error)
+  }
+
+  async function doUpload(uploadFiles: File[], duplicateMap: Map<string, DuplicateAction>) {
     setLoading(true)
     setError('')
-
     try {
-      let result: { literatureIds: string[]; batchJobId: string }
-
-      if (tab === 'url') {
-        if (!url.trim()) { setError('URL을 입력해주세요.'); setLoading(false); return }
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        })
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error)
+      // Delete replaced items first
+      for (const dup of duplicates) {
+        const action = duplicateMap.get(dup.filename) ?? 'replace'
+        if (action === 'replace') {
+          await deleteExisting(dup.existingId)
         }
-        result = await res.json()
-      } else {
-        const uploadFiles = tab === 'pdf' ? files : imageFiles
-        if (uploadFiles.length === 0) {
-          setError('파일을 선택해주세요.')
-          setLoading(false)
-          return
-        }
-        const allLiteratureIds: string[] = []
-        let firstBatchJobId = ''
-        for (const file of uploadFiles) {
-          const formData = new FormData()
-          formData.append('files', file)
-          const res = await fetch('/api/upload', { method: 'POST', body: formData })
-          const text = await res.text()
-          let data: { literatureIds?: string[]; batchJobId?: string; error?: string }
-          try {
-            data = JSON.parse(text)
-          } catch {
-            throw new Error(`서버 오류 (${res.status}): 업로드 실패`)
-          }
-          if (!res.ok) throw new Error(data.error || '업로드 실패')
-          allLiteratureIds.push(...(data.literatureIds || []))
-          if (!firstBatchJobId && data.batchJobId) firstBatchJobId = data.batchJobId
-        }
-        result = { literatureIds: allLiteratureIds, batchJobId: firstBatchJobId }
       }
 
+      // Filter out skipped files
+      const filesToUpload = uploadFiles.filter((f) => {
+        const action = duplicateMap.get(f.name)
+        return action !== 'skip'
+      })
+
+      if (filesToUpload.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      const allLiteratureIds: string[] = []
+      let firstBatchJobId = ''
+      for (const file of filesToUpload) {
+        const formData = new FormData()
+        formData.append('files', file)
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        const text = await res.text()
+        let data: { literatureIds?: string[]; batchJobId?: string; error?: string }
+        try { data = JSON.parse(text) } catch { throw new Error(`서버 오류 (${res.status})`) }
+        if (!res.ok) throw new Error(data.error || '업로드 실패')
+        allLiteratureIds.push(...(data.literatureIds || []))
+        if (!firstBatchJobId && data.batchJobId) firstBatchJobId = data.batchJobId
+      }
+      const result = { literatureIds: allLiteratureIds, batchJobId: firstBatchJobId }
       setUploadResult(result)
       await handleExtractAll(result.literatureIds)
     } catch (err) {
@@ -104,6 +115,80 @@ export default function UploadPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleUpload() {
+    setError('')
+
+    if (tab === 'url') {
+      if (!url.trim()) { setError('URL을 입력해주세요.'); return }
+      setLoading(true)
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        })
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
+        const result = await res.json()
+        setUploadResult(result)
+        await handleExtractAll(result.literatureIds)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '업로드에 실패했습니다.')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    const uploadFiles = tab === 'pdf' ? files : imageFiles
+    if (uploadFiles.length === 0) { setError('파일을 선택해주세요.'); return }
+
+    // Check for duplicates
+    const filenames = uploadFiles.map((f) => f.name)
+    try {
+      const res = await fetch('/api/check-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filenames }),
+      })
+      const data = await res.json()
+      const found: DuplicateInfo[] = (data.duplicates || []).map(
+        (d: { filename: string; id: string; title?: string }) => ({
+          filename: d.filename,
+          existingId: d.id,
+          title: d.title,
+          action: 'replace' as DuplicateAction,
+        })
+      )
+      if (found.length > 0) {
+        setDuplicates(found)
+        setPendingFiles(uploadFiles)
+        setApplyToAll(false)
+        setApplyToAllAction('replace')
+        setShowDuplicateModal(true)
+        return
+      }
+    } catch {
+      // If check fails, proceed anyway
+    }
+
+    await doUpload(uploadFiles, new Map())
+  }
+
+  function handleDuplicateConfirm() {
+    setShowDuplicateModal(false)
+    const map = new Map<string, DuplicateAction>()
+    if (applyToAll) {
+      duplicates.forEach((d) => map.set(d.filename, applyToAllAction))
+    } else {
+      duplicates.forEach((d) => map.set(d.filename, d.action))
+    }
+    doUpload(pendingFiles, map)
+  }
+
+  function setDuplicateAction(filename: string, action: DuplicateAction) {
+    setDuplicates((prev) => prev.map((d) => d.filename === filename ? { ...d, action } : d))
   }
 
   if (uploadResult) {
@@ -190,7 +275,6 @@ export default function UploadPage() {
             ))}
           </div>
 
-          {/* Tab content */}
           {tab === 'pdf' && (
             <FileDropzone files={files} onFilesChange={setFiles} />
           )}
@@ -276,6 +360,119 @@ export default function UploadPage() {
           PDF 최대 10개 · 각 파일 20MB 이하 · 이미지 JPG/PNG 지원
         </p>
       </div>
+
+      {/* Duplicate Modal */}
+      {showDuplicateModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{ background: 'white', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+          >
+            <h3 className="text-base font-semibold text-gray-900 mb-1">동일한 문헌이 있습니다</h3>
+            <p className="text-xs text-gray-500 mb-4">각 파일에 대해 교체하거나 건너뛸 수 있습니다.</p>
+
+            <div className="flex flex-col gap-3 mb-4">
+              {duplicates.map((dup) => (
+                <div
+                  key={dup.filename}
+                  className="rounded-xl p-3"
+                  style={{ background: 'rgba(0,0,0,0.04)' }}
+                >
+                  <p className="text-xs font-medium text-gray-800 truncate mb-0.5">{dup.filename}</p>
+                  {dup.title && (
+                    <p className="text-xs text-gray-400 truncate mb-2">{dup.title}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setDuplicateAction(dup.filename, 'replace'); setApplyToAll(false) }}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: (!applyToAll && dup.action === 'replace') ? '#111' : 'rgba(0,0,0,0.08)',
+                        color: (!applyToAll && dup.action === 'replace') ? 'white' : '#555',
+                      }}
+                    >
+                      교체
+                    </button>
+                    <button
+                      onClick={() => { setDuplicateAction(dup.filename, 'skip'); setApplyToAll(false) }}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: (!applyToAll && dup.action === 'skip') ? '#111' : 'rgba(0,0,0,0.08)',
+                        color: (!applyToAll && dup.action === 'skip') ? 'white' : '#555',
+                      }}
+                    >
+                      건너뛰기
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Apply to all checkbox */}
+            {duplicates.length > 1 && (
+              <div
+                className="flex items-center gap-3 rounded-xl p-3 mb-4"
+                style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)' }}
+              >
+                <input
+                  id="apply-all"
+                  type="checkbox"
+                  checked={applyToAll}
+                  onChange={(e) => setApplyToAll(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="apply-all" className="text-xs text-gray-600 cursor-pointer flex-1">
+                  다른 항목에도 동일하게 적용
+                </label>
+                {applyToAll && (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setApplyToAllAction('replace')}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                      style={{
+                        background: applyToAllAction === 'replace' ? '#111' : 'rgba(0,0,0,0.08)',
+                        color: applyToAllAction === 'replace' ? 'white' : '#555',
+                      }}
+                    >
+                      교체
+                    </button>
+                    <button
+                      onClick={() => setApplyToAllAction('skip')}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                      style={{
+                        background: applyToAllAction === 'skip' ? '#111' : 'rgba(0,0,0,0.08)',
+                        color: applyToAllAction === 'skip' ? 'white' : '#555',
+                      }}
+                    >
+                      건너뛰기
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDuplicateModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                style={{ background: 'rgba(0,0,0,0.06)', color: '#555' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDuplicateConfirm}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: '#111', color: 'white' }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
