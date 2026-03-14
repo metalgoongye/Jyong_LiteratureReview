@@ -8,6 +8,7 @@ import { RetryExtract } from '@/components/literature/RetryExtract'
 import { CausalDiagram } from '@/components/literature/CausalDiagram'
 import { UserNotes } from '@/components/literature/UserNotes'
 import { Badge } from '@/components/ui/Badge'
+import { DeleteButton } from '@/components/literature/DeleteButton'
 import { formatAuthors, formatYear } from '@/lib/utils/format'
 import type { LiteratureContent, EmpiricalEvidence } from '@/types/literature'
 
@@ -75,9 +76,12 @@ export default async function LiteratureDetailPage({
             {lit.journal_name && ` · ${lit.journal_name}`}
           </p>
         </div>
-        <Badge variant={statusVariants[lit.extraction_status as keyof typeof statusVariants]}>
-          {statusLabels[lit.extraction_status as keyof typeof statusLabels]}
-        </Badge>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <DeleteButton literatureId={lit.id} />
+          <Badge variant={statusVariants[lit.extraction_status as keyof typeof statusVariants]}>
+            {statusLabels[lit.extraction_status as keyof typeof statusLabels]}
+          </Badge>
+        </div>
       </div>
 
       {/* Body */}
