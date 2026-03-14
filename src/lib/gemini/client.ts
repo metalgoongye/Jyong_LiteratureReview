@@ -15,7 +15,7 @@ export async function callGemini(req: GeminiRequest): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
 
-  const model = 'gemini-2.0-flash'
+  const model = 'gemini-2.0-flash-lite'
 
   // Separate system messages from conversation
   const systemMessages = req.messages.filter((m) => m.role === 'system')
