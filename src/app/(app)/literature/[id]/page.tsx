@@ -145,10 +145,24 @@ export default async function LiteratureDetailPage({
                 <EvidenceBox evidence={evidenceItems} />
               )}
 
-              {/* Causal diagram */}
-              {lit.causal_paths && (
-                <CausalDiagram paths={lit.causal_paths as any} />
-              )}
+              {/* Causal diagram(s) */}
+              {lit.causal_paths && (() => {
+                const cp = lit.causal_paths as any
+                const models = Array.isArray(cp) ? cp : [cp]
+                return (
+                  <div className="mb-6">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider opacity-40 mb-3 flex items-center gap-2">
+                      인과 경로
+                      <span className="px-1.5 py-0.5 rounded text-xs normal-case tracking-normal" style={{ background: 'rgba(99,102,241,0.12)', color: '#4338ca', fontSize: '10px' }}>
+                        Causal Framework
+                      </span>
+                    </h4>
+                    {models.map((model: any, i: number) => (
+                      <CausalDiagram key={i} paths={model} showHeader={false} />
+                    ))}
+                  </div>
+                )
+              })()}
 
               {/* Personal notes */}
               <UserNotes literatureId={lit.id} initialNotes={lit.user_notes} />

@@ -74,10 +74,12 @@ export interface Literature {
   created_at: string
   updated_at: string
   deleted_at?: string | null
-  causal_paths?: {
+  causal_paths?: Array<{
+    model_name: string
     nodes: Array<{ id: string; label: string; type: 'independent' | 'mediator' | 'dependent' }>
     edges: Array<{ from: string; to: string; coefficient?: string | null; pvalue?: string | null; direction?: '+' | '-' | null }>
-  } | null
+    methodology?: { method_name?: string | null; analysis_type?: string | null; table_reference?: string | null; page_reference?: string | null } | null
+  }> | null
 }
 
 export interface LiteratureContent {

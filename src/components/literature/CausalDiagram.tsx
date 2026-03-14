@@ -22,6 +22,7 @@ export interface CausalMethodology {
 }
 
 export interface CausalPaths {
+  model_name?: string | null
   nodes: CausalNode[]
   edges: CausalEdge[]
   methodology?: CausalMethodology | null
@@ -41,7 +42,7 @@ function dispatchPageSelect(ref: string | null | undefined) {
   window.dispatchEvent(new CustomEvent('pdf-page-select', { detail: { page: parseInt(match[0]) } }))
 }
 
-export function CausalDiagram({ paths }: { paths: CausalPaths }) {
+export function CausalDiagram({ paths, showHeader = true }: { paths: CausalPaths; showHeader?: boolean }) {
   const { nodes, edges, methodology } = paths
   if (!nodes || nodes.length === 0) return null
 
@@ -76,13 +77,20 @@ export function CausalDiagram({ paths }: { paths: CausalPaths }) {
   ]
 
   return (
-    <div className="mb-6">
-      <h4 className="text-xs font-semibold uppercase tracking-wider opacity-40 mb-3 flex items-center gap-2">
-        인과 경로
-        <span className="px-1.5 py-0.5 rounded text-xs normal-case tracking-normal" style={{ background: 'rgba(99,102,241,0.12)', color: '#4338ca', fontSize: '10px' }}>
-          Causal Framework
-        </span>
-      </h4>
+    <div className="mb-4">
+      {showHeader && (
+        <h4 className="text-xs font-semibold uppercase tracking-wider opacity-40 mb-3 flex items-center gap-2">
+          인과 경로
+          <span className="px-1.5 py-0.5 rounded text-xs normal-case tracking-normal" style={{ background: 'rgba(99,102,241,0.12)', color: '#4338ca', fontSize: '10px' }}>
+            Causal Framework
+          </span>
+        </h4>
+      )}
+      {paths.model_name && (
+        <div className="text-xs font-medium mb-2 px-1" style={{ color: '#4338ca', opacity: 0.8 }}>
+          {paths.model_name}
+        </div>
+      )}
       <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)' }}>
         <div className="overflow-x-auto p-3">
           <svg width={canvasWidth} height={canvasHeight} style={{ display: 'block' }}>
@@ -133,11 +141,14 @@ export function CausalDiagram({ paths }: { paths: CausalPaths }) {
 
               const parts = []
               if (edge.direction) parts.push(edge.direction === '+' ? '+' : '−')
-              if (edge.coefficient) parts.push(edge.coefficient)
+              if (edge.coefficient) parts.push(edge.coefficient.replace(/^[+\-]/, ''))
               if (edge.pvalue) parts.push(`(${edge.pvalue})`)
               const label = parts.join(' ')
 
-              const midY = (y1 + y2) / 2
+              // Place label at t=0.25 along bezier (near source, lines still spread apart)
+              const t = 0.25
+              const lx = Math.pow(1-t,3)*x1 + 3*Math.pow(1-t,2)*t*mx + 3*(1-t)*t*t*mx + Math.pow(t,3)*x2
+              const ly = Math.pow(1-t,3)*y1 + 3*Math.pow(1-t,2)*t*y1 + 3*(1-t)*t*t*y2 + Math.pow(t,3)*y2
 
               return (
                 <g key={i}>
@@ -150,17 +161,28 @@ export function CausalDiagram({ paths }: { paths: CausalPaths }) {
                     opacity={0.75}
                   />
                   {label && (
-                    <text
-                      x={(x1 + x2) / 2}
-                      y={midY - 7}
-                      textAnchor="middle"
-                      fontSize="9"
-                      fill={color}
-                      fontFamily="monospace"
-                      fontWeight="600"
-                    >
-                      {label}
-                    </text>
+                    <>
+                      <rect
+                        x={lx - 28}
+                        y={ly - 15}
+                        width={56}
+                        height={12}
+                        rx={3}
+                        fill="white"
+                        opacity={0.85}
+                      />
+                      <text
+                        x={lx}
+                        y={ly - 6}
+                        textAnchor="middle"
+                        fontSize="8.5"
+                        fill={color}
+                        fontFamily="monospace"
+                        fontWeight="600"
+                      >
+                        {label}
+                      </text>
+                    </>
                   )}
                 </g>
               )

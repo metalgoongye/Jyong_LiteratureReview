@@ -62,16 +62,19 @@ Return a single JSON object with this exact schema:
     "content_confidence": number,
     "feedback": string
   },
-  "causal_paths": {
-    "nodes": [{"id": string, "label": string, "type": "independent"|"mediator"|"dependent"}],
-    "edges": [{"from": string, "to": string, "coefficient": string|null, "pvalue": string|null, "direction": "+"|"-"|null}],
-    "methodology": {
-      "method_name": string | null,
-      "analysis_type": string | null,
-      "table_reference": string | null,
-      "page_reference": string | null
+  "causal_paths": [
+    {
+      "model_name": string,
+      "nodes": [{"id": string, "label": string, "type": "independent"|"mediator"|"dependent"}],
+      "edges": [{"from": string, "to": string, "coefficient": string|null, "pvalue": string|null, "direction": "+"|"-"|null}],
+      "methodology": {
+        "method_name": string | null,
+        "analysis_type": string | null,
+        "table_reference": string | null,
+        "page_reference": string | null
+      }
     }
-  }
+  ]
 }
 
 Rules:
@@ -81,5 +84,5 @@ Rules:
 4. Bullets must be 개조식 — concise phrases, NOT full sentences. Max 4 bullets per section. Max 5 sections total. Keep JSON output compact.
 5. overall_accuracy is 0–100 based on objective criteria: score ≥80 if full text is clearly readable and all major sections extractable; score 65–79 if minor gaps (truncation, missing tables); score <65 only if content is substantially incomplete or unreadable. Be consistent — do not vary score based on minor wording differences.
 6. feedback: note any limitations, truncated content, or areas needing manual review (max 3 sentences)
-7. causal_paths: Extract the causal/structural framework if present. nodes = key variables; type = "independent" (exogenous/predictor), "mediator" (intermediate pathway), "dependent" (outcome). edges = directional relationships with statistical coefficients and p-values where available. CRITICAL: If the paper uses mediation, path analysis, SEM, or multi-step regression (X→M→Y), explicitly capture ALL indirect pathways. E.g., if sprawl affects energy use THROUGH housing type and size as mediators, show edges X→M1, X→M2, M1→Y, M2→Y with coefficients. methodology: set method_name to the primary statistical method (e.g., "Binary Logit Regression", "Hierarchical OLS", "SEM", "Multilevel Model"), analysis_type to a brief description of the approach (e.g., "Indirect path analysis via housing stock mediators", "Cross-sectional logistic regression"), table_reference to the main results table with page (e.g., "Table 3 (p.18)"), page_reference to the page number only (e.g., "18"). If no causal model exists, set causal_paths to null.
+7. causal_paths: Extract the causal/structural framework as an ARRAY of separate models. CRITICAL: If the paper runs separate regression/SEM models for different dependent variables (e.g., Model 1 for Y1, Model 2 for Y2), each model MUST be a separate object in the array with its own model_name, nodes, edges, and methodology. Do NOT merge models with different dependent variable sets into one diagram. model_name: short descriptive name of the model/outcome (e.g., "전력요금 모델", "가동률 모델", "주택가격 회귀모델"). nodes = key variables; type = "independent" (exogenous/predictor), "mediator" (intermediate pathway), "dependent" (outcome). edges = directional relationships with statistical coefficients and p-values where available. CRITICAL: If the paper uses mediation, path analysis, SEM, or multi-step regression (X→M→Y), explicitly capture ALL indirect pathways. methodology: set method_name to the primary statistical method (e.g., "Binary Logit Regression", "Hierarchical OLS", "SEM"), analysis_type to a brief description, table_reference to the main results table with page (e.g., "Table 3 (p.18)"), page_reference to the page number only (e.g., "18"). If no causal model exists, set causal_paths to null (not an empty array).
 8. Tables & figures: Actively extract quantitative results from TABLES and FIGURES — regression coefficients, odds ratios, marginal effects, model statistics. Do not rely only on text. Include table/figure reference in page_reference (e.g., "Table 3" or "p.15 Table 2").`
