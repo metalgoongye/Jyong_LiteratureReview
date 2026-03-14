@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { uploadFileToStorage } from '@/lib/storage/upload'
 
+
 const ALLOWED_TYPES = [
   'application/pdf',
   'image/jpeg',
