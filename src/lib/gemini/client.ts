@@ -70,7 +70,12 @@ export async function callGemini(req: GeminiRequest): Promise<string> {
   }
 
   const data = await response.json()
-  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text
+  // Gemini 2.5 Pro has thinking mode — filter out thought parts, get actual response
+  const parts = data?.candidates?.[0]?.content?.parts ?? []
+  const content = parts
+    .filter((p: { thought?: boolean; text?: string }) => !p.thought && p.text)
+    .map((p: { text: string }) => p.text)
+    .join('')
   if (!content) throw new Error('Empty response from Gemini')
   return content
 }
