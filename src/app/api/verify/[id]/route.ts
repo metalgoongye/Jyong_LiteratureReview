@@ -134,7 +134,17 @@ Return ONLY valid JSON (no markdown):
     try {
       parsed = JSON.parse(rawResponse)
     } catch {
-      throw new Error('AI 응답 파싱 실패')
+      // Fallback: extract JSON from markdown code blocks
+      const match = rawResponse.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (match) {
+        try {
+          parsed = JSON.parse(match[1])
+        } catch {
+          throw new Error('AI 응답 파싱 실패')
+        }
+      } else {
+        throw new Error('AI 응답 파싱 실패')
+      }
     }
 
     const { accuracy, six_is } = parsed
