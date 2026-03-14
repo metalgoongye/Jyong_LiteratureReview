@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     // Call OpenRouter
     let rawResponse = ''
     rawResponse = await callOpenRouter({
-      model: 'anthropic/claude-3-5-sonnet',
+      model: 'anthropic/claude-sonnet-4-6',
       messages: messages as Parameters<typeof callOpenRouter>[0]['messages'],
       response_format: { type: 'json_object' },
       temperature: 0.2,

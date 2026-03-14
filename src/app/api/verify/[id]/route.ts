@@ -114,7 +114,7 @@ Return ONLY valid JSON (no markdown):
 
   try {
     const rawResponse = await callOpenRouter({
-      model: 'anthropic/claude-opus-4-6',
+      model: 'anthropic/claude-sonnet-4-6',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.2,

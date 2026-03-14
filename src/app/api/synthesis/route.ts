@@ -95,7 +95,7 @@ Return ONLY valid JSON:
 
   try {
     const rawResponse = await callOpenRouter({
-      model: 'anthropic/claude-3-5-sonnet',
+      model: 'anthropic/claude-sonnet-4-6',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },

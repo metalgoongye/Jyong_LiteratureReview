@@ -59,7 +59,7 @@ export function PromptEditor({
       system_prompt: systemPrompt,
       user_prompt_template: userTemplate,
       temperature,
-      model: 'anthropic/claude-opus-4-6',
+      model: 'anthropic/claude-sonnet-4-6',
     }
 
     if (selectedId) {
