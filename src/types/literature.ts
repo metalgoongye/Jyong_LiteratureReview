@@ -51,6 +51,23 @@ export interface Literature {
   extraction_status: ExtractionStatus
   extraction_accuracy?: number | null
   ai_feedback?: string | null
+  six_is_scores?: {
+    inaccurate: number; inaccurate_reason?: string
+    imprecise: number; imprecise_reason?: string
+    inconsistent: number; inconsistent_reason?: string
+    incoherent: number; incoherent_reason?: string
+    incomplete: number
+    imperfect: number; imperfect_reason?: string
+    base_total: number
+    grade: string
+    verified_at: string
+  } | null
+  accuracy_details?: {
+    abstract_alignment?: number | null
+    field_completeness: number
+    overall: number
+    verified_at: string
+  } | null
   user_notes?: string | null
   ai_model_used?: string | null
   extraction_prompt_id?: string | null
