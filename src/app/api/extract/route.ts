@@ -4,7 +4,7 @@ import { downloadFile } from '@/lib/storage/upload'
 import { extractTextFromPdf, truncateTextForAI } from '@/lib/extraction/pdf'
 import { extractTextFromUrl } from '@/lib/extraction/url'
 import { bufferToBase64DataUrl } from '@/lib/extraction/image'
-import { callOpenRouter } from '@/lib/openrouter/client'
+import { callGemini } from '@/lib/gemini/client'
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_PROMPT_TEMPLATE } from '@/lib/openrouter/prompts'
 import { parseExtractionResponse, mapToLiteratureUpdate, mapToContentRows, mapToEvidenceRows } from '@/lib/extraction/parser'
 
@@ -107,9 +107,9 @@ export async function POST(request: NextRequest) {
 
     // Call OpenRouter
     let rawResponse = ''
-    rawResponse = await callOpenRouter({
-      model: 'anthropic/claude-sonnet-4-6',
-      messages: messages as Parameters<typeof callOpenRouter>[0]['messages'],
+    rawResponse = await callGemini({
+      
+      messages: messages as Parameters<typeof callGemini>[0]['messages'],
       response_format: { type: 'json_object' },
       temperature: 0.2,
       max_tokens: 8000,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { callOpenRouter } from '@/lib/openrouter/client'
+import { callGemini } from '@/lib/gemini/client'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -94,8 +94,8 @@ Return ONLY valid JSON:
 }`
 
   try {
-    const rawResponse = await callOpenRouter({
-      model: 'anthropic/claude-sonnet-4-6',
+    const rawResponse = await callGemini({
+      
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
