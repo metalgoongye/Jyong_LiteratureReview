@@ -81,15 +81,17 @@ Rate extraction quality:
 - field_completeness: how complete are the extracted fields overall (0-100)
 - overall: overall extraction quality (0-100)
 
-=== PART B: RESEARCH QUALITY — rate each dimension (0=very poor, 100=excellent) ===
-Evaluate the RESEARCH PAPER ITSELF (not the extraction):
-1. Accurate: factual correctness, numbers and claims correctly stated and attributed (100 = no errors)
-2. Precise: specificity of claims, units provided, confidence intervals/effect sizes reported (100 = very precise)
-3. Consistent: logical coherence — A=B and B=C implies A=C; no internal data contradictions (100 = fully consistent)
-4. Coherent: section flow, conclusions well-supported by evidence, organized argument (100 = very coherent)
-5. Overall: holistic research design quality — your overall judgment of the paper's completeness and rigor (100 = excellent)
+=== PART B: RESEARCH QUALITY — rate each dimension strictly (0=very poor, 100=perfect) ===
+Be a HARSH, CRITICAL academic reviewer. Most real papers score 60-85. Scores above 90 require exceptional justification. 100 is virtually impossible for any real paper.
 
-For any score below 80, give a brief specific reason (1-2 sentences). For scores 80+ use empty string.
+Evaluate the RESEARCH PAPER ITSELF (not the extraction):
+1. Accurate: factual correctness, numbers and claims correctly stated and attributed. Deduct for any unverified claims, missing citations, or overstated findings.
+2. Precise: specificity of claims — are units provided? confidence intervals? effect sizes? p-values? Vague claims like "significantly increased" without numbers = heavy deduction.
+3. Consistent: logical coherence — do conclusions follow from data? Any internal contradictions? Deduct if methodology doesn't match research questions.
+4. Coherent: section flow, are conclusions well-supported by evidence? Is the argument organized and non-repetitive?
+5. Overall: holistic research design quality — sample size, generalizability, limitations acknowledged? Be strict.
+
+IMPORTANT: Always give a reason for EVERY score, not just below 80. Even high scores should note what prevents perfection.
 
 Return ONLY valid JSON (no markdown):
 {
