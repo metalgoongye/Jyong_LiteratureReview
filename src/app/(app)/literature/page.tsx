@@ -37,7 +37,7 @@ export default async function LiteratureListPage({
 
   if (sp.search) {
     query = query.or(
-      `title.ilike.%${sp.search}%,authors.cs.{"${sp.search}"}`
+      `title.ilike.%${sp.search}%,journal_name.ilike.%${sp.search}%,authors.cs.{"${sp.search}"}`
     )
   }
 
