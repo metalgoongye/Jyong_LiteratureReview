@@ -80,6 +80,9 @@ export default function SynthesisPage() {
   const [review, setReview] = useState<SynthesisReview | null>(null)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewError, setReviewError] = useState('')
+  const [improveLoading, setImproveLoading] = useState(false)
+  const [improveError, setImproveError] = useState('')
+  const [improveDismissed, setImproveDismissed] = useState(false)
 
   useEffect(() => {
     fetchHistory()
@@ -102,6 +105,8 @@ export default function SynthesisPage() {
     setError('')
     setReview(null)
     setReviewError('')
+    setImproveError('')
+    setImproveDismissed(false)
     try {
       const res = await fetch(`/api/synthesis/${id}`)
       const data = await res.json()
@@ -122,6 +127,8 @@ export default function SynthesisPage() {
     setSelectedId(null)
     setReview(null)
     setReviewError('')
+    setImproveError('')
+    setImproveDismissed(false)
     try {
       const res = await fetch('/api/synthesis', {
         method: 'POST',
@@ -165,6 +172,30 @@ export default function SynthesisPage() {
     setError('')
     setReview(null)
     setReviewError('')
+    setImproveError('')
+    setImproveDismissed(false)
+  }
+
+  async function handleImprove() {
+    if (!selectedId || !review) return
+    setImproveLoading(true)
+    setImproveError('')
+    try {
+      const res = await fetch(`/api/synthesis/${selectedId}/improve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '개선 실패')
+      setResult(data.result)
+      setReview(null)
+      setImproveDismissed(false)
+    } catch (err) {
+      setImproveError(err instanceof Error ? err.message : '개선 오류')
+    } finally {
+      setImproveLoading(false)
+    }
   }
 
   async function handleReview() {
@@ -172,6 +203,8 @@ export default function SynthesisPage() {
     setReviewLoading(true)
     setReviewError('')
     setReview(null)
+    setImproveDismissed(false)
+    setImproveError('')
     try {
       const res = await fetch(`/api/synthesis/${selectedId}/review`, { method: 'POST' })
       const data = await res.json()
@@ -524,6 +557,52 @@ export default function SynthesisPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Improvement prompt */}
+                  {!improveDismissed && review.overall_reliability < 95 && (
+                    <div className="mx-6 mb-5 rounded-xl p-4 flex items-center gap-4" style={{ background: 'rgba(99,102,241,0.08)', border: '1px dashed rgba(99,102,241,0.3)' }}>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium" style={{ color: '#3730a3' }}>
+                          현재 합성 신뢰도는 <strong>{review.overall_reliability}</strong>입니다.
+                          {' '}AI가 검토 결과를 반영해{' '}
+                          <strong>~{Math.min(review.overall_reliability + 10, 97)}</strong>
+                          {' '}수준으로 향상시킬 수 있습니다.
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: '#4338ca', opacity: 0.7 }}>
+                          잘못된 인용 수정 · 누락 근거 추가 · 근거 없는 주장 제거
+                        </p>
+                        {improveError && <p className="text-red-500 text-xs mt-1">{improveError}</p>}
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={handleImprove}
+                          disabled={improveLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
+                          style={{
+                            background: improveLoading ? 'rgba(99,102,241,0.2)' : '#4338ca',
+                            color: 'white',
+                            cursor: improveLoading ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {improveLoading ? '개선 중...' : '개선하기 →'}
+                        </button>
+                        <button
+                          onClick={() => setImproveDismissed(true)}
+                          disabled={improveLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs transition-all hover:opacity-70"
+                          style={{ background: 'rgba(0,0,0,0.06)', color: '#555', cursor: 'pointer' }}
+                        >
+                          괜찮아요
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {review.overall_reliability >= 95 && (
+                    <div className="mx-6 mb-5 rounded-xl p-3 text-xs text-center" style={{ color: '#16a34a', background: 'rgba(22,163,74,0.06)' }}>
+                      신뢰도 {review.overall_reliability}/100 — 추가 개선이 필요하지 않은 수준입니다.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
