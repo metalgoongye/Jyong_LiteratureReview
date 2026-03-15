@@ -15,6 +15,21 @@ interface SynthesisResult {
   references: string[]
 }
 
+interface CitationIssue {
+  claim: string
+  issue: string
+  severity: 'high' | 'medium' | 'low'
+}
+
+interface SynthesisReview {
+  overall_reliability: number
+  verdict: string
+  citation_issues: CitationIssue[]
+  evidence_gaps: string[]
+  unsupported_claims: string[]
+  strengths: string[]
+}
+
 interface SynthesisMeta {
   id: string
   hypothesis: string
@@ -62,6 +77,9 @@ export default function SynthesisPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [review, setReview] = useState<SynthesisReview | null>(null)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
 
   useEffect(() => {
     fetchHistory()
@@ -82,6 +100,8 @@ export default function SynthesisPage() {
     setSelectedId(id)
     setResult(null)
     setError('')
+    setReview(null)
+    setReviewError('')
     try {
       const res = await fetch(`/api/synthesis/${id}`)
       const data = await res.json()
@@ -100,6 +120,8 @@ export default function SynthesisPage() {
     setError('')
     setResult(null)
     setSelectedId(null)
+    setReview(null)
+    setReviewError('')
     try {
       const res = await fetch('/api/synthesis', {
         method: 'POST',
@@ -107,10 +129,11 @@ export default function SynthesisPage() {
         body: JSON.stringify({ hypothesis }),
       })
       const text = await res.text()
-      let data: { result?: SynthesisResult; error?: string }
+      let data: { result?: SynthesisResult; error?: string; id?: string }
       try { data = JSON.parse(text) } catch { throw new Error('서버 응답 오류') }
       if (!res.ok) throw new Error(data.error || '합성 실패')
       setResult(data.result!)
+      if (data.id) setSelectedId(data.id)
       await fetchHistory()
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다')
@@ -140,6 +163,25 @@ export default function SynthesisPage() {
     setResult(null)
     setHypothesis('')
     setError('')
+    setReview(null)
+    setReviewError('')
+  }
+
+  async function handleReview() {
+    if (!selectedId) return
+    setReviewLoading(true)
+    setReviewError('')
+    setReview(null)
+    try {
+      const res = await fetch(`/api/synthesis/${selectedId}/review`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '검증 실패')
+      setReview(data.review)
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : '검증 오류')
+    } finally {
+      setReviewLoading(false)
+    }
   }
 
   function exportPDF() {
@@ -322,8 +364,8 @@ export default function SynthesisPage() {
           {/* Result */}
           {result && (
             <div style={{ maxWidth: '56rem' }}>
-              {/* Export buttons */}
-              <div className="flex gap-3 mb-4 no-print">
+              {/* Export + Review buttons */}
+              <div className="flex gap-3 mb-4 no-print flex-wrap">
                 <button
                   onClick={exportPDF}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
@@ -348,6 +390,24 @@ export default function SynthesisPage() {
                   </svg>
                   Word 저장
                 </button>
+                {selectedId && (
+                  <button
+                    onClick={handleReview}
+                    disabled={reviewLoading}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80 ml-auto"
+                    style={{
+                      background: reviewLoading ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.1)',
+                      color: '#4338ca',
+                      cursor: reviewLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 12l2 2 4-4" />
+                      <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    {reviewLoading ? 'AI 검증 중...' : 'AI 자가검증'}
+                  </button>
+                )}
               </div>
 
               <div className="glass-card p-8 print-area">
@@ -379,6 +439,93 @@ export default function SynthesisPage() {
                   </div>
                 )}
               </div>
+
+              {/* Review error */}
+              {reviewError && (
+                <p className="text-red-500 text-xs mt-3 no-print">{reviewError}</p>
+              )}
+
+              {/* Review panel */}
+              {review && (
+                <div className="mt-6 no-print rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.03)' }}>
+                  {/* Header */}
+                  <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(99,102,241,0.1)', background: 'rgba(99,102,241,0.06)' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+                      <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" />
+                    </svg>
+                    <span className="text-sm font-semibold" style={{ color: '#4338ca' }}>AI 자가검증 결과</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="text-xs" style={{ color: '#4338ca', opacity: 0.6 }}>신뢰도</span>
+                      <span className="text-lg font-bold" style={{ color: review.overall_reliability >= 75 ? '#16a34a' : review.overall_reliability >= 50 ? '#d97706' : '#dc2626' }}>
+                        {review.overall_reliability}
+                      </span>
+                      <span className="text-xs" style={{ color: '#4338ca', opacity: 0.5 }}>/100</span>
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-5 flex flex-col gap-5">
+                    {/* Verdict */}
+                    <p className="text-sm leading-relaxed" style={{ color: '#333' }}>{review.verdict}</p>
+
+                    {/* Citation issues */}
+                    {review.citation_issues?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#dc2626', opacity: 0.8 }}>인용 문제</h4>
+                        <div className="flex flex-col gap-2">
+                          {review.citation_issues.map((issue, i) => (
+                            <div key={i} className="rounded-lg p-3" style={{
+                              background: issue.severity === 'high' ? 'rgba(220,38,38,0.06)' : issue.severity === 'medium' ? 'rgba(217,119,6,0.06)' : 'rgba(0,0,0,0.03)',
+                              borderLeft: `3px solid ${issue.severity === 'high' ? '#dc2626' : issue.severity === 'medium' ? '#d97706' : '#9ca3af'}`,
+                            }}>
+                              <p className="text-xs font-medium mb-1" style={{ color: issue.severity === 'high' ? '#dc2626' : issue.severity === 'medium' ? '#d97706' : '#6b7280' }}>
+                                [{issue.severity.toUpperCase()}]
+                              </p>
+                              <p className="text-xs mb-1 opacity-70" style={{ fontStyle: 'italic' }}>"{issue.claim}"</p>
+                              <p className="text-xs" style={{ color: '#444' }}>{issue.issue}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Unsupported claims */}
+                    {review.unsupported_claims?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#d97706', opacity: 0.8 }}>근거 초과 주장</h4>
+                        <ul className="flex flex-col gap-1">
+                          {review.unsupported_claims.map((c, i) => (
+                            <li key={i} className="text-xs pl-3" style={{ color: '#555', borderLeft: '2px solid rgba(217,119,6,0.4)' }}>{c}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Evidence gaps */}
+                    {review.evidence_gaps?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#6b7280' }}>미활용 근거</h4>
+                        <ul className="flex flex-col gap-1">
+                          {review.evidence_gaps.map((g, i) => (
+                            <li key={i} className="text-xs pl-3" style={{ color: '#555', borderLeft: '2px solid rgba(107,114,128,0.4)' }}>{g}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Strengths */}
+                    {review.strengths?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#16a34a', opacity: 0.8 }}>잘된 점</h4>
+                        <ul className="flex flex-col gap-1">
+                          {review.strengths.map((s, i) => (
+                            <li key={i} className="text-xs pl-3" style={{ color: '#555', borderLeft: '2px solid rgba(22,163,74,0.4)' }}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>

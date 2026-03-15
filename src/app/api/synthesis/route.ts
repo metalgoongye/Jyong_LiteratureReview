@@ -113,14 +113,14 @@ Return ONLY valid JSON:
     }
 
     // Save to DB
-    await supabase.from('syntheses').insert({
+    const { data: saved } = await supabase.from('syntheses').insert({
       user_id: user.id,
       hypothesis,
       title: result.title,
       result,
-    })
+    }).select('id').single()
 
-    return NextResponse.json({ result })
+    return NextResponse.json({ result, id: saved?.id ?? null })
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Synthesis failed'
     return NextResponse.json({ error: msg }, { status: 500 })
