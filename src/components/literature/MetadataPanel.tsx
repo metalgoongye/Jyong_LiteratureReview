@@ -139,7 +139,7 @@ export function MetadataPanel({ literature: lit }: MetadataPanelProps) {
                 className="flex items-center justify-between mb-2"
                 style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 10 }}
               >
-                <p className="text-xs opacity-40">Six Is 논문 품질</p>
+                <p className="text-xs opacity-40">연구 엄밀성</p>
                 <span
                   className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{
