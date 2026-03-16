@@ -232,9 +232,8 @@ Return ONLY valid JSON (no markdown fences):
     }
 
     // Programmatically annotate the FULL original HTML — no truncation
-    const annotated_html = originalHtml
-      ? buildAnnotatedHtml(originalHtml, expert_review.literature_gaps)
-      : ''
+    // buildAnnotatedHtml handles empty originalHtml via fallback
+    const annotated_html = buildAnnotatedHtml(originalHtml, expert_review.literature_gaps)
 
     await supabase.from('cpr_sessions').update({
       expert_review,
