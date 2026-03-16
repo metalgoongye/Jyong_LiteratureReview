@@ -143,13 +143,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   // Use plain text for AI (truncated to fit context)
   const manuscriptText = (session.original_text || '').slice(0, 10000)
 
-  // Full original HTML stored separately — used for programmatic annotation (no truncation)
-  const originalHtml = session.original_html || ''
+  // Full original HTML for programmatic annotation (no truncation)
+  // If original_html not stored (old sessions), generate from plain text
+  let originalHtml = session.original_html || ''
+  if (!originalHtml && session.original_text) {
+    originalHtml = (session.original_text as string)
+      .split('\n')
+      .filter((line: string) => line.trim())
+      .map((line: string) => `<p>${escapeHtml(line.trim())}</p>`)
+      .join('\n')
+  }
 
-  const systemPrompt = `You are the world's foremost academic authority reviewing a manuscript.
-Your primary goal: identify gaps in prior literature coverage and suggest specific evidence from the synthesis to fill those gaps.
+  const systemPrompt = `You are the world's foremost academic authority helping to develop a manuscript into a publication-ready paper.
+Your primary goal: find logical argument gaps in the manuscript and fill them with evidence from the synthesis to create a seamlessly integrated, coherent academic argument.
+Think of it this way: if the manuscript says "A→B" in one sentence and "A→C" later, but the synthesis shows "B→C", you should insert "B→C" between those sentences so the argument flows A→B→C→A→C naturally.
 Write responses in the same language as the manuscript (Korean if Korean, English if English).
-Be specific — cite exact locations in the manuscript and provide ready-to-insert academic sentences.`
+Be specific — cite exact paragraph locations and provide sentences that fit naturally into the manuscript's flow.`
 
   const reviewerSection = session.reviewer_comments
     ? `\n=== REVIEWER COMMENTS ===\n${session.reviewer_comments.slice(0, 3000)}\n`
@@ -164,21 +173,22 @@ Be specific — cite exact locations in the manuscript and provide ready-to-inse
     : ''
 
   const taskSynthesis = synthesisContext
-    ? `literature_gaps: Find 3-5 specific places in the manuscript where the synthesis references above would strengthen the argument WITHOUT duplicating citations already in the manuscript.
+    ? `literature_gaps: Find 3-5 places in the manuscript where inserting synthesis evidence would bridge a logical gap or strengthen the argument chain — WITHOUT duplicating citations already in the manuscript.
+HOW TO FIND GAPS: Look for argument leaps where the manuscript jumps from premise A to conclusion C without establishing the connecting step B. The synthesis evidence provides those B→C links.
 CRITICAL RULES:
-- insertion_text MUST cite REAL authors from the Available References list above (e.g., "Ewing et al. (2016)" or "Glaeser & Kahn (2008)"). Never invent authors.
-- Copy the exact author names and year from the Available References list.
-- Draw the substance of insertion_text from the synthesis sections above (which summarize what those papers found).
-- new_references MUST be copied verbatim from the Available References list — do not paraphrase or shorten.
+- insertion_text MUST cite REAL authors from the Available References list above (e.g., "Ewing et al. (2016)"). Never invent authors.
+- Copy exact author names and year from the Available References list.
+- The inserted sentence must read as a natural continuation of the surrounding text — not as a bracketed annotation.
+- new_references MUST be copied verbatim from the Available References list.
 For each gap:
-- topic: brief topic label (Korean if manuscript is Korean)
-- location: quote the first 8-10 words of the sentence/paragraph BEFORE the insertion point
-- insertion_text: 1-2 complete academic sentences using real authors from the reference list, ready to paste into the manuscript
-- new_references: copy the EXACT full citation string(s) from the Available References list for each author cited`
-    : `literature_gaps: Identify 3-5 prior literature gaps in the manuscript. For each:
-- topic: brief topic label
-- location: quote the first 8-10 words of the sentence/paragraph before insertion point
-- insertion_text: suggested academic sentence to add (general recommendation, no specific source)
+- topic: brief label describing what logical link is being added (Korean if manuscript is Korean)
+- location: quote the EXACT first 8-10 words of the sentence/paragraph AFTER which to insert (verbatim from manuscript)
+- insertion_text: 1-2 academic sentences that bridge the argument gap, citing real authors, written to flow naturally with the surrounding text
+- new_references: EXACT full citation string(s) from Available References for each cited author`
+    : `literature_gaps: Identify 3-5 argument gaps in the manuscript where a connecting sentence would strengthen the logical flow. For each:
+- topic: brief label (Korean if manuscript is Korean)
+- location: quote the exact first 8-10 words of the sentence/paragraph after which to insert
+- insertion_text: 1-2 academic sentences that bridge the logical gap
 - new_references: []`
 
   const userPrompt = `=== MANUSCRIPT ===
