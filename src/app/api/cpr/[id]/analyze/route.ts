@@ -140,18 +140,20 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       .single()
 
     if (synthesis?.result) {
+      // synthesis route stores: sections[].content (not body), references as string[]
       const result = synthesis.result as {
         title?: string
-        sections?: Array<{ heading: string; body: string }>
-        references?: Array<{ id: string; citation: string }>
+        sections?: Array<{ heading: string; content?: string; body?: string }>
+        references?: string[] | Array<{ id: string; citation: string }>
       }
       const sectionsText = (result.sections || [])
-        .map((s) => `[${s.heading}]\n${s.body}`)
+        .map((s) => `[${s.heading}]\n${s.content || s.body || ''}`)
         .join('\n\n')
 
-      // filter(Boolean) removes undefined/null/empty strings
-      synthesisRefList = (result.references || [])
-        .map((r) => r.citation)
+      // references may be string[] (synthesis route output) or {id, citation}[] (legacy)
+      const rawRefs = result.references || []
+      synthesisRefList = rawRefs
+        .map((r) => (typeof r === 'string' ? r : (r as { citation: string }).citation))
         .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
 
       const refsText = synthesisRefList.map((r, i) => `[${i + 1}] ${r}`).join('\n')
