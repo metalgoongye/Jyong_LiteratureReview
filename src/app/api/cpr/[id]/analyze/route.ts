@@ -31,7 +31,7 @@ function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string
     let fallback = '<div>'
     for (const gap of gaps) {
       if (gap.insertion_text) {
-        fallback += `<p style="color:#dc2626;font-style:italic;margin-top:8px;">[보강 제안 — ${gap.topic}] ${escapeHtml(gap.insertion_text)}</p>`
+        fallback += `<p style="color:#dc2626;margin-top:0;margin-bottom:0.5em;"><em>[${gap.topic}]</em> ${escapeHtml(gap.insertion_text)}</p>`
       }
     }
     const allRefs = gaps.flatMap((g) => g.new_references || []).filter(Boolean)
@@ -74,7 +74,8 @@ function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string
 
     if (insertPos === -1) continue
 
-    const redSpan = `<p style="color:#dc2626;font-style:italic;margin-top:4px;">[보강 제안: ${escapeHtml(gap.insertion_text)}]</p>`
+    // Insert as natural sentence in red — no annotation label, flows as part of manuscript
+    const redSpan = `<p style="color:#dc2626;margin-top:0;margin-bottom:0.5em;">${escapeHtml(gap.insertion_text)}</p>`
     html = html.slice(0, insertPos) + redSpan + html.slice(insertPos)
   }
 

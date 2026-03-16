@@ -613,7 +613,7 @@ export default function CprPage() {
                     <div>
                       <p className="text-xs font-semibold opacity-50">주석 문서 미리보기</p>
                       <p className="text-xs opacity-30 mt-0.5">
-                        <span style={{ color: '#dc2626' }}>붉은 글씨</span> = AI 보강 제안 (복사해서 바로 사용 가능)
+                        <span style={{ color: '#dc2626' }}>붉은 글씨</span> = synthesis 근거 삽입 문장 (본문에 바로 통합 가능)
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
