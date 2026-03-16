@@ -20,32 +20,61 @@ interface AnalysisResult {
   reviewer_responses: string[]
 }
 
+function escapeHtml(str: string) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 // Programmatically inject red spans into full HTML — no truncation, no AI hallucination
 function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string {
+  // Fallback: if no original HTML, build a simple document from gaps alone
+  if (!originalHtml) {
+    let fallback = '<div>'
+    for (const gap of gaps) {
+      if (gap.insertion_text) {
+        fallback += `<p style="color:#dc2626;font-style:italic;margin-top:8px;">[보강 제안 — ${gap.topic}] ${escapeHtml(gap.insertion_text)}</p>`
+      }
+    }
+    const allRefs = gaps.flatMap((g) => g.new_references || []).filter(Boolean)
+    const dedupedRefs = [...new Set(allRefs)]
+    if (dedupedRefs.length > 0) {
+      fallback += `<p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>`
+      for (const ref of dedupedRefs) {
+        fallback += `<p style="color:#dc2626;margin-top:4px;">▸ ${escapeHtml(ref)}</p>`
+      }
+    }
+    fallback += '</div>'
+    return fallback
+  }
+
   let html = originalHtml
 
   for (const gap of gaps) {
     if (!gap.location || !gap.insertion_text) continue
 
-    // Use first ~30 chars of location quote to find paragraph
-    const searchStr = gap.location.replace(/\s+/g, ' ').trim().slice(0, 30)
-    if (!searchStr) continue
+    // Try progressively shorter substrings if exact match fails
+    const fullSearch = gap.location.replace(/\s+/g, ' ').trim()
+    const candidates = [
+      fullSearch.slice(0, 30),
+      fullSearch.slice(0, 20),
+      fullSearch.slice(0, 12),
+    ]
 
-    const lowerHtml = html.toLowerCase()
-    const lowerSearch = searchStr.toLowerCase()
-    const idx = lowerHtml.indexOf(lowerSearch)
-    if (idx === -1) continue
+    let insertPos = -1
+    for (const searchStr of candidates) {
+      if (!searchStr) continue
+      const idx = html.toLowerCase().indexOf(searchStr.toLowerCase())
+      if (idx !== -1) {
+        const paraEnd = html.indexOf('</p>', idx)
+        if (paraEnd !== -1) {
+          insertPos = paraEnd + 4
+          break
+        }
+      }
+    }
 
-    // Find end of the </p> containing this text
-    const paraEnd = html.indexOf('</p>', idx)
-    if (paraEnd === -1) continue
+    if (insertPos === -1) continue
 
-    const insertPos = paraEnd + 4
-    const escaped = gap.insertion_text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-    const redSpan = `<p style="color:#dc2626;font-style:italic;margin-top:4px;">[보강 제안: ${escaped}]</p>`
+    const redSpan = `<p style="color:#dc2626;font-style:italic;margin-top:4px;">[보강 제안: ${escapeHtml(gap.insertion_text)}]</p>`
     html = html.slice(0, insertPos) + redSpan + html.slice(insertPos)
   }
 
@@ -56,8 +85,7 @@ function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string
   if (dedupedRefs.length > 0) {
     html += `\n<p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>\n`
     for (const ref of dedupedRefs) {
-      const escaped = ref.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      html += `<p style="color:#dc2626;margin-top:4px;">▸ ${escaped}</p>\n`
+      html += `<p style="color:#dc2626;margin-top:4px;">▸ ${escapeHtml(ref)}</p>\n`
     }
   }
 
@@ -132,7 +160,7 @@ Be specific — cite exact locations in the manuscript and provide ready-to-inse
     : ''
 
   const taskReviewer = session.reviewer_comments
-    ? 'reviewer_responses: For each reviewer comment, one specific response strategy (same order as comments above). If no comments, return [].'
+    ? 'reviewer_responses: 각 리뷰어 코멘트에 대해 구체적인 대응 전략을 한국어로 작성하세요 (코멘트 순서와 동일). 코멘트 없으면 [].'
     : ''
 
   const taskSynthesis = synthesisContext
