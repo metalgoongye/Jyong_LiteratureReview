@@ -199,8 +199,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const systemPrompt = `You are the world's foremost academic authority helping to develop a manuscript into a publication-ready paper.
 Your primary goal: find logical argument gaps in the manuscript and fill them with evidence from the synthesis to create a seamlessly integrated, coherent academic argument.
 Think of it this way: if the manuscript says "A→B" in one sentence and "A→C" later, but the synthesis shows "B→C", you should insert "B→C" between those sentences so the argument flows A→B→C→A→C naturally.
-Write responses in the same language as the manuscript (Korean if Korean, English if English).
-Be specific — cite exact paragraph locations and provide sentences that fit naturally into the manuscript's flow.`
+LANGUAGE RULES:
+- overall_assessment, strengths, major_concerns, gaps_summary: ALWAYS write in Korean regardless of manuscript language.
+- insertion_text: write in the same language as the surrounding manuscript text.
+- reviewer_responses: always in Korean.`
 
   const reviewerSection = session.reviewer_comments
     ? `\n=== REVIEWER COMMENTS ===\n${session.reviewer_comments.slice(0, 3000)}\n`
@@ -236,9 +238,9 @@ ${manuscriptText}
 ${reviewerSection}${synthesisSection}
 
 TASKS:
-1. overall_assessment: 2-3 sentence expert evaluation of the manuscript quality
-2. strengths: 2-4 specific strengths (array of strings)
-3. major_concerns: 2-4 serious issues beyond literature gaps (array of strings)
+1. overall_assessment: 논문 품질에 대한 2-3문장 전문가 평가 (한국어로 작성)
+2. strengths: 구체적인 강점 2-4개 (한국어 문자열 배열)
+3. major_concerns: 선행연구 외 주요 지적사항 2-4개 (한국어 문자열 배열)
 4. ${taskReviewer ? taskReviewer + '\n5.' : '5.'} gaps_summary: 1-2 sentences summarizing what prior literature the manuscript is missing
 5. ${taskSynthesis}
 
