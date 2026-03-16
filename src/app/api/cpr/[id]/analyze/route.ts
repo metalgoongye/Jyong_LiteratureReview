@@ -24,9 +24,15 @@ function escapeHtml(str: string) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// Programmatically inject red spans into full HTML — no truncation, no AI hallucination
+// Strip HTML tags to get plain text for matching
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+// Programmatically inject red sentences into full HTML
+// Splits into block segments and searches plain-text of each block — handles inline tags reliably
 function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string {
-  // Fallback: if no original HTML, build a simple document from gaps alone
+  // Fallback: if no original HTML, list gaps as standalone red sentences
   if (!originalHtml) {
     let fallback = '<div>'
     for (const gap of gaps) {
@@ -46,43 +52,56 @@ function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string
     return fallback
   }
 
-  let html = originalHtml
+  // Split HTML into block-level segments (each ends at a closing block tag)
+  const blocks: string[] = []
+  let remaining = originalHtml
+  while (remaining.length > 0) {
+    const match = remaining.search(/<\/(?:p|h[1-6]|li|blockquote)>/i)
+    if (match === -1) {
+      blocks.push(remaining)
+      break
+    }
+    const tagEnd = remaining.indexOf('>', match) + 1
+    blocks.push(remaining.slice(0, tagEnd))
+    remaining = remaining.slice(tagEnd)
+  }
+
+  // Map: blockIndex → list of red sentences to insert after it
+  const insertAfter = new Map<number, string[]>()
 
   for (const gap of gaps) {
     if (!gap.location || !gap.insertion_text) continue
+    const searchBase = gap.location.replace(/\s+/g, ' ').trim()
 
-    // Try progressively shorter substrings if exact match fails
-    const fullSearch = gap.location.replace(/\s+/g, ' ').trim()
-    const candidates = [
-      fullSearch.slice(0, 30),
-      fullSearch.slice(0, 20),
-      fullSearch.slice(0, 12),
-    ]
-
-    let insertPos = -1
-    for (const searchStr of candidates) {
-      if (!searchStr) continue
-      const idx = html.toLowerCase().indexOf(searchStr.toLowerCase())
-      if (idx !== -1) {
-        const paraEnd = html.indexOf('</p>', idx)
-        if (paraEnd !== -1) {
-          insertPos = paraEnd + 4
-          break
+    let foundIdx = -1
+    outer: for (const len of [30, 22, 15, 10]) {
+      const needle = searchBase.slice(0, len).toLowerCase()
+      if (needle.length < 5) continue
+      for (let i = 0; i < blocks.length; i++) {
+        const blockPlain = stripTags(blocks[i]).toLowerCase()
+        if (blockPlain.includes(needle)) {
+          foundIdx = i
+          break outer
         }
       }
     }
 
-    if (insertPos === -1) continue
+    if (foundIdx === -1) continue
 
-    // Insert as natural sentence in red — no annotation label, flows as part of manuscript
-    const redSpan = `<p style="color:#dc2626;margin-top:0;margin-bottom:0.5em;">${escapeHtml(gap.insertion_text)}</p>`
-    html = html.slice(0, insertPos) + redSpan + html.slice(insertPos)
+    const redSentence = `<p style="color:#dc2626;margin-top:0;margin-bottom:0.5em;">${escapeHtml(gap.insertion_text)}</p>`
+    if (!insertAfter.has(foundIdx)) insertAfter.set(foundIdx, [])
+    insertAfter.get(foundIdx)!.push(redSentence)
   }
+
+  // Reconstruct HTML with insertions in place
+  let html = blocks.map((block, i) => {
+    const inserts = insertAfter.get(i)
+    return inserts ? block + inserts.join('') : block
+  }).join('')
 
   // Append new references section (deduplicated)
   const allNewRefs = gaps.flatMap((g) => g.new_references || []).filter(Boolean)
   const dedupedRefs = [...new Set(allNewRefs)]
-
   if (dedupedRefs.length > 0) {
     html += `\n<p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>\n`
     for (const ref of dedupedRefs) {
