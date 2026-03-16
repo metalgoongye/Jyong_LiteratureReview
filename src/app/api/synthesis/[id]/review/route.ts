@@ -115,6 +115,13 @@ Return ONLY valid JSON:
       throw new Error('AI 검증 응답 파싱 실패')
     }
 
+    // Save review to DB
+    await supabase
+      .from('syntheses')
+      .update({ review })
+      .eq('id', id)
+      .eq('user_id', user.id)
+
     return NextResponse.json({ review })
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Review failed'

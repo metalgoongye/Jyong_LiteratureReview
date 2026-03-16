@@ -113,6 +113,9 @@ export default function SynthesisPage() {
       if (data.synthesis) {
         setResult(data.synthesis.result)
         setHypothesis(data.synthesis.hypothesis)
+        if (data.synthesis.review) {
+          setReview(data.synthesis.review)
+        }
       }
     } catch {
       setError('불러오기 실패')

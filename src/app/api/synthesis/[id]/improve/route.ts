@@ -147,10 +147,10 @@ Return ONLY valid JSON with the same structure:
       throw new Error('AI 개선 응답 파싱 실패')
     }
 
-    // Update synthesis in DB
+    // Update synthesis in DB, clear review since it's now outdated
     await supabase
       .from('syntheses')
-      .update({ result: improved })
+      .update({ result: improved, review: null })
       .eq('id', id)
       .eq('user_id', user.id)
 

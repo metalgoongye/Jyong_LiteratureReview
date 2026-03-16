@@ -70,7 +70,8 @@ export interface ExtractionResult {
     content_confidence: number
     feedback: string
   }
-  causal_paths?: {
+  causal_paths?: Array<{
+    model_name: string
     nodes: Array<{ id: string; label: string; type: 'independent' | 'mediator' | 'dependent' }>
     edges: Array<{ from: string; to: string; coefficient?: string | null; pvalue?: string | null; direction?: '+' | '-' | null }>
     methodology?: {
@@ -79,5 +80,5 @@ export interface ExtractionResult {
       table_reference?: string | null
       page_reference?: string | null
     } | null
-  } | null
+  }> | null
 }
