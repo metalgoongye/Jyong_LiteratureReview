@@ -97,11 +97,11 @@ export function Sidebar() {
 
   return (
     <aside
-      className="no-print w-56 flex-shrink-0 h-screen sticky top-0 flex flex-col"
-      style={{ borderRight: '1px solid rgba(0,0,0,0.06)' }}
+      className="no-print flex-shrink-0 h-screen sticky top-0 flex flex-col items-center"
+      style={{ width: 56, borderRight: '1px solid rgba(0,0,0,0.06)' }}
     >
       {/* Logo */}
-      <div className="px-5 py-5 flex items-center gap-2.5">
+      <div className="py-4 flex items-center justify-center">
         <div
           style={{
             width: 32,
@@ -111,7 +111,6 @@ export function Sidebar() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0,
           }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
@@ -119,41 +118,40 @@ export function Sidebar() {
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
           </svg>
         </div>
-        <span className="font-semibold text-sm tracking-tight">LitReview</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-2 flex flex-col gap-0.5">
+      <nav className="flex-1 py-2 flex flex-col gap-0.5 items-center w-full px-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
               key={item.href}
               href={item.href}
+              title={item.label}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all',
-                isActive ? 'nav-item-active font-medium' : 'opacity-50 hover:opacity-80'
+                'flex items-center justify-center w-9 h-9 rounded-xl transition-all',
+                isActive ? 'nav-item-active' : 'opacity-40 hover:opacity-80'
               )}
             >
               {item.icon}
-              {item.label}
             </Link>
           )
         })}
       </nav>
 
       {/* Logout */}
-      <div className="px-3 pb-5">
+      <div className="pb-4 px-2">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm opacity-40 hover:opacity-70 transition-opacity"
+          title="로그아웃"
+          className="flex items-center justify-center w-9 h-9 rounded-xl opacity-30 hover:opacity-60 transition-opacity"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-          로그아웃
         </button>
       </div>
     </aside>
