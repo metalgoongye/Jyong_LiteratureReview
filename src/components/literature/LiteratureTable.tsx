@@ -76,8 +76,8 @@ export function LiteratureTable({ items }: Props) {
   })
 
   return (
-    <div className="glass-card overflow-hidden">
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+    <div className="glass-card" style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
             {columns.map(({ label, key }) => (
@@ -153,7 +153,7 @@ export function LiteratureTable({ items }: Props) {
                   {lit.pages || '—'}
                 </td>
                 {/* 분야 */}
-                <td style={{ padding: '10px 14px', maxWidth: 120 }}>
+                <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
                   {lit.fields?.length ? (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.06)', whiteSpace: 'nowrap' }}>
                       {lit.fields[0]}{lit.fields.length > 1 ? ` +${lit.fields.length - 1}` : ''}
