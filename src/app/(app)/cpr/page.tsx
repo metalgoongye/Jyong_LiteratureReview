@@ -232,6 +232,14 @@ export default function CprPage() {
       return runs
     }
 
+    // Detect bold-only paragraph = section heading (mammoth renders Word heading styles this way)
+    function looksLikeHeading(el: Element): boolean {
+      const text = el.textContent?.trim() || ''
+      if (!text || text.length > 120) return false
+      const strongText = Array.from(el.querySelectorAll('strong, b')).map((b) => b.textContent).join('')
+      return strongText.trim() === text && text.length > 0
+    }
+
     const children: InstanceType<typeof Paragraph>[] = []
     parsed.body.childNodes.forEach((node) => {
       if (node.nodeType !== Node.ELEMENT_NODE) return
@@ -245,7 +253,16 @@ export default function CprPage() {
       } else if (tag === 'h3') {
         children.push(new Paragraph({ heading: HeadingLevel.HEADING_3, spacing: { before: 240, after: 80 }, children: runs.length ? runs : [new TextRun(el.textContent || '')] }))
       } else if (tag === 'p' && runs.length) {
-        children.push(new Paragraph({ spacing: { after: 120 }, children: runs }))
+        if (looksLikeHeading(el)) {
+          // Bold-only short paragraph → treat as sub-heading with spacing
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 360, after: 80 },
+            children: runs,
+          }))
+        } else {
+          children.push(new Paragraph({ spacing: { after: 120 }, children: runs }))
+        }
       }
     })
 

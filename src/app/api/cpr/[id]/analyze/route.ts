@@ -107,15 +107,17 @@ For each gap:
 - new_references: []`
 
   const htmlInstruction = originalHtml
-    ? `annotated_html: Take the following ORIGINAL HTML and insert red-highlighted additions at the correct locations.
-For each literature gap insertion, find the paragraph matching the location hint and append:
-<span style="color:#dc2626;font-style:italic;"> [문헌 보강 제안: INSERT_TEXT (Author, Year)]</span>
-At the very end of the document, add:
-<p style="margin-top:24px;"><strong>추가 참고문헌 제안</strong></p>
-Then list each new reference as: <p style="color:#dc2626;margin-top:4px;">▸ REFERENCE_TEXT</p>
+    ? `annotated_html: Take the COMPLETE ORIGINAL HTML below and:
+1. KEEP ALL ORIGINAL CONTENT intact — including the full References/Bibliography section at the end.
+2. For each literature_gap, find the paragraph matching the location hint and append immediately after it:
+   <span style="color:#dc2626;font-style:italic;"> [보강 제안: INSERTION_TEXT]</span>
+3. After the existing References section (or at the very end if no references), add:
+   <p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>
+   Then for each NEW reference not already in the document: <p style="color:#dc2626;margin-top:4px;">▸ REFERENCE_TEXT</p>
+   If a synthesis reference is ALREADY cited in the original manuscript, skip it (do not duplicate).
 
-ORIGINAL HTML TO ANNOTATE:
-${originalHtml.slice(0, 8000)}`
+COMPLETE ORIGINAL HTML:
+${originalHtml.slice(0, 25000)}`
     : `annotated_html: Return the manuscript text as HTML with red insertions.`
 
   const userPrompt = `=== MANUSCRIPT ===
