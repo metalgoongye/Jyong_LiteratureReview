@@ -8,7 +8,8 @@ interface LiteratureGap {
   topic: string
   location: string
   insertion_text: string
-  new_references: string[]
+  new_references: string[]       // resolved after parsing — actual strings from synthesisRefList
+  new_ref_indices?: number[]     // raw AI output — 1-based indices into synthesisRefList
 }
 
 interface AnalysisResult {
@@ -216,21 +217,19 @@ Be specific — cite exact paragraph locations and provide sentences that fit na
   const taskSynthesis = synthesisContext
     ? `literature_gaps: Find 3-5 places in the manuscript where inserting synthesis evidence would bridge a logical gap or strengthen the argument chain — WITHOUT duplicating citations already in the manuscript.
 HOW TO FIND GAPS: Look for argument leaps where the manuscript jumps from premise A to conclusion C without establishing the connecting step B. The synthesis evidence provides those B→C links.
-CRITICAL RULES:
-- insertion_text MUST cite REAL authors from the Available References list above (e.g., "Ewing et al. (2016)"). Never invent authors.
-- Copy exact author names and year from the Available References list.
-- The inserted sentence must read as a natural continuation of the surrounding text — not as a bracketed annotation.
-- new_references: copy the COMPLETE full string from the numbered Available References list (e.g., if you cited [3], copy the entire "[3]" entry string word-for-word including authors, year, title, journal, DOI — not an abbreviated form).
+STRICT RULES:
+- insertion_text MUST only cite authors that appear in the Available References list above. Never invent authors or titles.
+- new_ref_indices: return ONLY the reference NUMBER(s) from the Available References list that you actually cited (e.g., [1, 3] means you cited [1] and [3] from the list). Do NOT write reference strings — only numbers.
 For each gap:
 - topic: brief label describing what logical link is being added (Korean if manuscript is Korean)
 - location: quote the EXACT first 8-10 words of the sentence/paragraph AFTER which to insert (verbatim from manuscript)
-- insertion_text: 1-2 academic sentences that bridge the argument gap, citing real authors, written to flow naturally with the surrounding text
-- new_references: array of COMPLETE APA reference strings copied verbatim from Available References (the full string, not "Author et al., Year")`
+- insertion_text: 1-2 academic sentences that bridge the argument gap, citing real authors from the list, written to flow naturally
+- new_ref_indices: array of integers (1-based) referencing entries in the Available References list above`
     : `literature_gaps: Identify 3-5 argument gaps in the manuscript where a connecting sentence would strengthen the logical flow. For each:
 - topic: brief label (Korean if manuscript is Korean)
 - location: quote the exact first 8-10 words of the sentence/paragraph after which to insert
 - insertion_text: 1-2 academic sentences that bridge the logical gap
-- new_references: []`
+- new_ref_indices: []`
 
   const userPrompt = `=== MANUSCRIPT ===
 ${manuscriptText}
@@ -255,7 +254,7 @@ Return ONLY valid JSON (no markdown fences):
       "topic": "string",
       "location": "string — first 8-10 words of the paragraph before insertion",
       "insertion_text": "string — ready-to-insert academic sentence(s)",
-      "new_references": ["string — full reference entry"]
+      "new_ref_indices": [1, 3]
     }
   ]
 }`
@@ -273,13 +272,28 @@ Return ONLY valid JSON (no markdown fences):
 
     const parsed = JSON.parse(raw) as AnalysisResult
 
+    // Resolve new_ref_indices → actual reference strings from synthesisRefList
+    // This prevents AI hallucination: only refs in synthesisRefList can appear
+    const resolvedGaps: LiteratureGap[] = (parsed.literature_gaps || []).map((gap) => {
+      const indices: number[] = Array.isArray(gap.new_ref_indices) ? gap.new_ref_indices : []
+      const resolvedRefs = indices
+        .map((idx) => synthesisRefList[idx - 1])  // 1-based → 0-based
+        .filter((r): r is string => typeof r === 'string' && r.trim().length > 0)
+      return {
+        topic: gap.topic || '',
+        location: gap.location || '',
+        insertion_text: gap.insertion_text || '',
+        new_references: resolvedRefs,
+      }
+    })
+
     const expert_review = {
       overall_assessment: parsed.overall_assessment || '',
       strengths: parsed.strengths || [],
       major_concerns: parsed.major_concerns || [],
       reviewer_responses: parsed.reviewer_responses || [],
       gaps_summary: parsed.gaps_summary || '',
-      literature_gaps: parsed.literature_gaps || [],
+      literature_gaps: resolvedGaps,
     }
 
     // Programmatically annotate the FULL original HTML — no truncation

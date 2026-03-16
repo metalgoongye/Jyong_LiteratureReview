@@ -205,17 +205,18 @@ export default function CprPage() {
     const parsed = parser.parseFromString(annotatedHtml, 'text/html')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function getRuns(el: Element): any[] {
+    function getRuns(el: Element, inheritColor?: string): any[] {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const runs: any[] = []
       el.childNodes.forEach((child) => {
         if (child.nodeType === Node.TEXT_NODE) {
           const text = child.textContent || ''
-          if (text.trim()) runs.push(new TextRun({ text }))
+          // Preserve whitespace-only runs only if they're between words
+          if (text) runs.push(new TextRun({ text, color: inheritColor }))
         } else if (child.nodeType === Node.ELEMENT_NODE) {
           const c = child as Element
           const style = c.getAttribute('style') || ''
-          const isRed = style.includes('#dc2626') || style.includes('dc2626')
+          const isRed = style.includes('#dc2626') || style.includes('dc2626') || inheritColor === 'DC2626'
           const isBold = c.tagName === 'STRONG' || c.tagName === 'B'
           const isItalic = c.tagName === 'EM' || c.tagName === 'I' || style.includes('italic')
           const text = c.textContent || ''
@@ -223,8 +224,8 @@ export default function CprPage() {
             runs.push(new TextRun({
               text,
               bold: isBold,
-              italics: isRed || isItalic,
-              color: isRed ? 'DC2626' : undefined,
+              italics: isItalic,
+              color: isRed ? 'DC2626' : inheritColor,
             }))
           }
         }
@@ -245,7 +246,10 @@ export default function CprPage() {
       if (node.nodeType !== Node.ELEMENT_NODE) return
       const el = node as Element
       const tag = el.tagName.toLowerCase()
-      const runs = getRuns(el)
+      // Inherit color from paragraph-level style (e.g., red synthesis sentences)
+      const elStyle = el.getAttribute('style') || ''
+      const elColor = (elStyle.includes('#dc2626') || elStyle.includes('dc2626')) ? 'DC2626' : undefined
+      const runs = getRuns(el, elColor)
       if (tag === 'h1') {
         children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 120 }, children: runs.length ? runs : [new TextRun(el.textContent || '')] }))
       } else if (tag === 'h2') {
