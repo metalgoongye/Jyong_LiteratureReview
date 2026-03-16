@@ -31,15 +31,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '논문 파일이 필요합니다' }, { status: 400 })
   }
 
-  // Parse main Word file
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const mammoth = require('mammoth')
+
   const docBuffer = Buffer.from(await docFile.arrayBuffer())
+
+  // Extract plain text for AI processing
   const { value: originalText } = await mammoth.extractRawText({ buffer: docBuffer })
 
   if (!originalText?.trim()) {
     return NextResponse.json({ error: '문서에서 텍스트를 추출할 수 없습니다' }, { status: 400 })
   }
+
+  // Extract HTML to preserve formatting (headings, bold, etc.)
+  const { value: originalHtml } = await mammoth.convertToHtml({ buffer: docBuffer })
 
   // Parse reviewer comments file if provided
   let combinedReviewerComments = reviewerComments || ''
@@ -65,6 +70,8 @@ export async function POST(req: NextRequest) {
       original_text: originalText,
       reviewer_comments: combinedReviewerComments || null,
       synthesis_id: synthesisId || null,
+      // Store original HTML here before analysis; analyze route will replace with annotated version
+      annotated_html: originalHtml,
       status: 'pending',
     })
     .select('id')

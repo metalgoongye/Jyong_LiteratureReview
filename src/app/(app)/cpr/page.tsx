@@ -2,13 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react'
 
+interface LiteratureGap {
+  topic: string
+  location: string
+  insertion_text: string
+  new_references: string[]
+}
+
 interface ExpertReview {
   overall_assessment: string
   strengths: string[]
   major_concerns: string[]
-  minor_concerns: string[]
   reviewer_responses: string[]
-  synthesis_suggestions: string[]
+  gaps_summary: string
+  literature_gaps: LiteratureGap[]
 }
 
 interface CprSession {
@@ -77,8 +84,14 @@ export default function CprPage() {
     const s = data.session
     setSelectedId(id)
     setSynthesisId(s.synthesis_id || '')
-    setExpertReview(s.expert_review || null)
-    setAnnotatedHtml(s.annotated_html || '')
+    if (s.status === 'completed') {
+      setExpertReview(s.expert_review || null)
+      setAnnotatedHtml(s.annotated_html || '')
+      setShowAnnotated(true)
+    } else {
+      setExpertReview(null)
+      setAnnotatedHtml('')
+    }
     setError('')
   }
 
@@ -107,7 +120,6 @@ export default function CprPage() {
     setExpertReview(null)
     setAnnotatedHtml('')
 
-    // Step 1: Upload + parse
     const formData = new FormData()
     formData.append('docFile', docFile)
     if (reviewerComments.trim()) formData.append('reviewerComments', reviewerComments)
@@ -122,7 +134,7 @@ export default function CprPage() {
       sessionId = data.id
       setSelectedId(sessionId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다')
+      setError(err instanceof Error ? err.message : '업로드 오류가 발생했습니다')
       setUploading(false)
       return
     }
@@ -131,7 +143,6 @@ export default function CprPage() {
     setAnalyzing(true)
     await loadSessions()
 
-    // Step 2: AI analysis
     try {
       const res = await fetch(`/api/cpr/${sessionId}/analyze`, { method: 'POST' })
       const data = await res.json()
@@ -159,8 +170,16 @@ export default function CprPage() {
   function downloadAnnotated() {
     if (!annotatedHtml) return
     const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-<head><meta charset="UTF-8"></head>
-<body style="font-family:'Times New Roman',serif;font-size:12pt;margin:2.5cm;">
+<head><meta charset="UTF-8">
+<style>
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 2.5cm; line-height: 1.6; }
+  h1 { font-size: 16pt; font-weight: bold; margin-top: 18pt; }
+  h2 { font-size: 14pt; font-weight: bold; margin-top: 16pt; }
+  h3 { font-size: 12pt; font-weight: bold; margin-top: 12pt; }
+  p { margin-top: 6pt; }
+</style>
+</head>
+<body>
 ${annotatedHtml}
 </body></html>`
     const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' })
@@ -201,19 +220,16 @@ ${annotatedHtml}
             key={s.id}
             onClick={() => loadSession(s.id)}
             className="group relative rounded-xl px-2 py-2 cursor-pointer transition-all"
-            style={{
-              background: selectedId === s.id ? 'rgba(0,0,0,0.07)' : 'transparent',
-            }}
+            style={{ background: selectedId === s.id ? 'rgba(0,0,0,0.07)' : 'transparent' }}
             onMouseEnter={(e) => { if (selectedId !== s.id) e.currentTarget.style.background = 'rgba(0,0,0,0.03)' }}
             onMouseLeave={(e) => { if (selectedId !== s.id) e.currentTarget.style.background = 'transparent' }}
           >
-            <p className="text-xs font-medium truncate pr-4" style={{ maxWidth: 140 }}>
-              {s.title || '제목 없음'}
-            </p>
-            <p className="text-xs opacity-35 mt-0.5">{formatDate(s.created_at)}</p>
-            {s.status === 'analyzing' && (
-              <span className="text-xs opacity-50">분석 중...</span>
-            )}
+            <p className="text-xs font-medium truncate pr-4" style={{ maxWidth: 140 }}>{s.title || '제목 없음'}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs opacity-35">{formatDate(s.created_at)}</p>
+              {s.status === 'completed' && <span className="text-xs" style={{ color: '#16a34a' }}>✓</span>}
+              {s.status === 'analyzing' && <span className="text-xs opacity-40">분석중</span>}
+            </div>
             <button
               onClick={(e) => handleDelete(s.id, e)}
               disabled={deletingId === s.id}
@@ -232,10 +248,10 @@ ${annotatedHtml}
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <h1 className="text-xl font-semibold">CPR</h1>
-            <p className="text-xs opacity-40 mt-0.5">논문 소생 — AI 전문가 리뷰 + 붉은 주석 삽입</p>
+            <p className="text-xs opacity-40 mt-0.5">논문 소생 — 선행연구 보강 + AI 전문가 리뷰</p>
           </div>
 
-          {/* Upload section */}
+          {/* Upload section — hidden after analysis complete */}
           {!expertReview && (
             <div className="glass-card p-5 mb-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -307,9 +323,7 @@ ${annotatedHtml}
                       <polyline points="17 8 12 3 7 8"/>
                       <line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
-                    <span className="text-xs">
-                      {reviewerFile ? reviewerFile.name : '.docx 파일로 업로드'}
-                    </span>
+                    <span className="text-xs">{reviewerFile ? reviewerFile.name : '.docx 파일로 업로드'}</span>
                   </label>
                 </div>
 
@@ -330,8 +344,8 @@ ${annotatedHtml}
                     ))}
                   </select>
                   {synthesisId && (
-                    <p className="text-xs opacity-40 mt-1">
-                      선택된 Synthesis의 근거를 논문에 통합 제안합니다
+                    <p className="text-xs opacity-40 mt-1.5 leading-relaxed">
+                      Synthesis의 문헌 근거를 논문 초안에 보강 제안합니다
                     </p>
                   )}
                 </div>
@@ -357,18 +371,17 @@ ${annotatedHtml}
             <div className="glass-card p-8 text-center mb-4">
               <div className="inline-block w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin opacity-40 mb-3" />
               <p className="text-sm opacity-50">
-                {uploading ? '문서 파싱 중...' : '최고권위자 AI가 논문을 검토하고 있습니다...'}
+                {uploading ? '문서 파싱 중...' : 'AI가 논문을 분석하고 문헌 보강 제안을 생성하고 있습니다...'}
               </p>
               <p className="text-xs opacity-30 mt-1">1~2분 소요될 수 있습니다</p>
             </div>
           )}
 
-          {/* Expert review results */}
+          {/* Results */}
           {expertReview && !isLoading && (
             <>
-              {/* Reset button */}
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold opacity-70">전문가 리뷰 결과</h2>
+                <h2 className="text-sm font-semibold opacity-70">분석 결과</h2>
                 <button
                   onClick={resetForm}
                   className="text-xs opacity-40 hover:opacity-70 transition-opacity px-3 py-1.5 rounded-lg"
@@ -378,37 +391,78 @@ ${annotatedHtml}
                 </button>
               </div>
 
-              {/* Overall assessment */}
-              <div className="glass-card p-5 mb-3">
+              {/* Literature gaps — primary feature */}
+              {(expertReview.literature_gaps?.length > 0 || expertReview.gaps_summary) && (
+                <div className="glass-card p-5 mb-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <p className="text-xs font-semibold" style={{ color: '#2563eb' }}>선행연구 보강 제안</p>
+                  </div>
+
+                  {expertReview.gaps_summary && (
+                    <p className="text-xs opacity-60 leading-relaxed mb-4">{expertReview.gaps_summary}</p>
+                  )}
+
+                  <div className="flex flex-col gap-4">
+                    {(expertReview.literature_gaps || []).map((gap, i) => (
+                      <div key={i} className="rounded-xl p-3" style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.1)' }}>
+                        <div className="flex items-start gap-2 mb-2">
+                          <span className="text-xs font-bold flex-shrink-0 mt-0.5" style={{ color: '#2563eb' }}>#{i + 1}</span>
+                          <p className="text-xs font-semibold opacity-80">{gap.topic}</p>
+                        </div>
+
+                        <p className="text-xs opacity-40 mb-1 ml-4">삽입 위치: &ldquo;{gap.location}&hellip;&rdquo; 뒤</p>
+
+                        <div className="ml-4 rounded-lg p-2 mb-2" style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.1)' }}>
+                          <p className="text-xs mb-1 opacity-40">제안 삽입 문장:</p>
+                          <p className="text-xs leading-relaxed" style={{ color: '#dc2626', fontStyle: 'italic' }}>{gap.insertion_text}</p>
+                        </div>
+
+                        {gap.new_references?.length > 0 && (
+                          <div className="ml-4">
+                            <p className="text-xs opacity-30 mb-1">참고문헌:</p>
+                            {gap.new_references.map((ref, j) => (
+                              <p key={j} className="text-xs leading-relaxed" style={{ color: '#dc2626', opacity: 0.7 }}>▸ {ref}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Expert review summary */}
+              <div className="glass-card p-4 mb-3">
                 <p className="text-xs font-semibold opacity-50 mb-2">전반적 평가</p>
-                <p className="text-sm leading-relaxed">{expertReview.overall_assessment}</p>
+                <p className="text-xs leading-relaxed opacity-70">{expertReview.overall_assessment}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                {/* Strengths */}
-                {expertReview.strengths.length > 0 && (
+                {expertReview.strengths?.length > 0 && (
                   <div className="glass-card p-4">
                     <p className="text-xs font-semibold mb-2" style={{ color: '#16a34a' }}>강점</p>
                     <ul className="flex flex-col gap-1.5">
                       {expertReview.strengths.map((s, i) => (
                         <li key={i} className="text-xs leading-relaxed flex gap-2">
-                          <span style={{ color: '#16a34a' }} className="flex-shrink-0 mt-0.5">✓</span>
-                          <span>{s}</span>
+                          <span style={{ color: '#16a34a' }} className="flex-shrink-0">✓</span>
+                          <span className="opacity-70">{s}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {/* Major concerns */}
-                {expertReview.major_concerns.length > 0 && (
+                {expertReview.major_concerns?.length > 0 && (
                   <div className="glass-card p-4">
-                    <p className="text-xs font-semibold mb-2" style={{ color: '#dc2626' }}>주요 지적사항</p>
+                    <p className="text-xs font-semibold mb-2" style={{ color: '#d97706' }}>주요 지적사항</p>
                     <ul className="flex flex-col gap-1.5">
                       {expertReview.major_concerns.map((c, i) => (
                         <li key={i} className="text-xs leading-relaxed flex gap-2">
-                          <span style={{ color: '#dc2626' }} className="flex-shrink-0 mt-0.5">⚠</span>
-                          <span>{c}</span>
+                          <span style={{ color: '#d97706' }} className="flex-shrink-0">⚠</span>
+                          <span className="opacity-70">{c}</span>
                         </li>
                       ))}
                     </ul>
@@ -416,45 +470,14 @@ ${annotatedHtml}
                 )}
               </div>
 
-              {/* Minor concerns */}
-              {expertReview.minor_concerns.length > 0 && (
-                <div className="glass-card p-4 mb-3">
-                  <p className="text-xs font-semibold opacity-50 mb-2">경미한 지적사항</p>
-                  <ul className="flex flex-col gap-1.5">
-                    {expertReview.minor_concerns.map((c, i) => (
-                      <li key={i} className="text-xs leading-relaxed flex gap-2">
-                        <span className="opacity-40 flex-shrink-0">·</span>
-                        <span className="opacity-70">{c}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Reviewer responses */}
-              {expertReview.reviewer_responses.length > 0 && (
+              {expertReview.reviewer_responses?.length > 0 && (
                 <div className="glass-card p-4 mb-3">
                   <p className="text-xs font-semibold opacity-50 mb-2">리뷰어 코멘트 대응 전략</p>
                   <ul className="flex flex-col gap-2">
                     {expertReview.reviewer_responses.map((r, i) => (
                       <li key={i} className="text-xs leading-relaxed">
-                        <span className="font-medium opacity-50 mr-1">#{i + 1}</span>
+                        <span className="font-medium opacity-40 mr-1">#{i + 1}</span>
                         <span className="opacity-70">{r}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Synthesis suggestions */}
-              {expertReview.synthesis_suggestions.length > 0 && (
-                <div className="glass-card p-4 mb-3">
-                  <p className="text-xs font-semibold mb-2" style={{ color: '#2563eb' }}>Synthesis 근거 통합 제안</p>
-                  <ul className="flex flex-col gap-2">
-                    {expertReview.synthesis_suggestions.map((s, i) => (
-                      <li key={i} className="text-xs leading-relaxed flex gap-2">
-                        <span style={{ color: '#2563eb' }} className="flex-shrink-0">→</span>
-                        <span className="opacity-70">{s}</span>
                       </li>
                     ))}
                   </ul>
@@ -465,14 +488,19 @@ ${annotatedHtml}
               {annotatedHtml && (
                 <div className="glass-card p-4 mb-3">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-semibold opacity-50">주석 문서</p>
+                    <div>
+                      <p className="text-xs font-semibold opacity-50">주석 문서 미리보기</p>
+                      <p className="text-xs opacity-30 mt-0.5">
+                        <span style={{ color: '#dc2626' }}>붉은 글씨</span> = AI 보강 제안 (복사해서 바로 사용 가능)
+                      </p>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setShowAnnotated((v) => !v)}
                         className="text-xs opacity-40 hover:opacity-70 transition-opacity px-2.5 py-1 rounded-lg"
                         style={{ background: 'rgba(0,0,0,0.06)' }}
                       >
-                        {showAnnotated ? '접기' : '미리보기'}
+                        {showAnnotated ? '접기' : '펼치기'}
                       </button>
                       <button
                         onClick={downloadAnnotated}
@@ -485,20 +513,18 @@ ${annotatedHtml}
                   </div>
                   {showAnnotated && (
                     <div
-                      className="text-xs leading-relaxed overflow-auto rounded-xl p-4"
+                      className="overflow-auto rounded-xl p-5"
                       style={{
-                        background: 'rgba(0,0,0,0.02)',
-                        maxHeight: 500,
-                        fontFamily: 'serif',
+                        background: '#fafaf9',
+                        maxHeight: 600,
+                        fontFamily: '"Times New Roman", Georgia, serif',
                         fontSize: 13,
-                        lineHeight: 1.8,
+                        lineHeight: 1.9,
+                        color: '#111',
                       }}
                       dangerouslySetInnerHTML={{ __html: annotatedHtml }}
                     />
                   )}
-                  <p className="text-xs opacity-30 mt-2">
-                    <span style={{ color: '#dc2626' }}>붉은 글씨</span>가 AI의 인라인 제안입니다
-                  </p>
                 </div>
               )}
             </>
@@ -510,7 +536,8 @@ ${annotatedHtml}
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-4 opacity-20">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
               </svg>
-              <p className="text-sm opacity-30">논문 파일을 업로드하면 AI가 전문가 리뷰를 제공합니다</p>
+              <p className="text-sm opacity-30">논문 .docx 파일을 업로드하면</p>
+              <p className="text-xs opacity-20 mt-1">부족한 선행연구를 찾아 삽입 위치와 참고문헌까지 제안합니다</p>
             </div>
           )}
         </div>
