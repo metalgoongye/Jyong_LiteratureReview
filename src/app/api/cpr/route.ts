@@ -68,10 +68,9 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       title,
       original_text: originalText,
+      original_html: originalHtml,
       reviewer_comments: combinedReviewerComments || null,
       synthesis_id: synthesisId || null,
-      // Store original HTML here before analysis; analyze route will replace with annotated version
-      annotated_html: originalHtml,
       status: 'pending',
     })
     .select('id')

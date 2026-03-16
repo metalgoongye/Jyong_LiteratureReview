@@ -158,6 +158,28 @@ export default function CprPage() {
     }
   }
 
+  async function handleReanalyze() {
+    if (!selectedId) return
+    setAnalyzing(true)
+    setError('')
+    setExpertReview(null)
+    setAnnotatedHtml('')
+    setShowAnnotated(false)
+    try {
+      const res = await fetch(`/api/cpr/${selectedId}/analyze`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '재분석 실패')
+      setExpertReview(data.expert_review)
+      setAnnotatedHtml(data.annotated_html || '')
+      setShowAnnotated(true)
+      await loadSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '재분석 중 오류가 발생했습니다')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     setDeletingId(id)
@@ -382,13 +404,23 @@ ${annotatedHtml}
             <>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold opacity-70">분석 결과</h2>
-                <button
-                  onClick={resetForm}
-                  className="text-xs opacity-40 hover:opacity-70 transition-opacity px-3 py-1.5 rounded-lg"
-                  style={{ background: 'rgba(0,0,0,0.06)' }}
-                >
-                  + 새 분석
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleReanalyze}
+                    disabled={analyzing}
+                    className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-70"
+                    style={{ background: 'rgba(37,99,235,0.08)', color: '#2563eb', opacity: analyzing ? 0.4 : 1 }}
+                  >
+                    ↻ 재분석
+                  </button>
+                  <button
+                    onClick={resetForm}
+                    className="text-xs opacity-40 hover:opacity-70 transition-opacity px-3 py-1.5 rounded-lg"
+                    style={{ background: 'rgba(0,0,0,0.06)' }}
+                  >
+                    + 새 분석
+                  </button>
+                </div>
               </div>
 
               {/* Literature gaps — primary feature */}

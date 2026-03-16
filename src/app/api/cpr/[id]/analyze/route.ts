@@ -65,8 +65,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // original_html stored in annotated_html column before analysis
-  const originalHtml = session.annotated_html || ''
+  // original_html is preserved in its own column — safe for re-analysis
+  const originalHtml = session.original_html || ''
 
   // Use plain text for AI (truncated to fit context)
   const manuscriptText = (session.original_text || '').slice(0, 10000)
