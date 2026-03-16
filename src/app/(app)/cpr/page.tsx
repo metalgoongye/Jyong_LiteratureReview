@@ -189,26 +189,74 @@ export default function CprPage() {
     setDeletingId(null)
   }
 
-  function downloadAnnotated() {
+  async function downloadAnnotated() {
     if (!annotatedHtml) return
-    const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-<head><meta charset="UTF-8">
-<style>
-  body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 2.5cm; line-height: 1.6; }
-  h1 { font-size: 16pt; font-weight: bold; margin-top: 18pt; }
-  h2 { font-size: 14pt; font-weight: bold; margin-top: 16pt; }
-  h3 { font-size: 12pt; font-weight: bold; margin-top: 12pt; }
-  p { margin-top: 6pt; }
-</style>
-</head>
-<body>
-${annotatedHtml}
-</body></html>`
-    const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' })
+    const {
+      Document: DocxDocument,
+      Paragraph,
+      TextRun,
+      HeadingLevel,
+      Packer,
+    } = await import('docx')
+
+    const parser = new DOMParser()
+    const parsed = parser.parseFromString(annotatedHtml, 'text/html')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function getRuns(el: Element): any[] {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const runs: any[] = []
+      el.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = child.textContent || ''
+          if (text.trim()) runs.push(new TextRun({ text }))
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          const c = child as Element
+          const style = c.getAttribute('style') || ''
+          const isRed = style.includes('#dc2626') || style.includes('dc2626')
+          const isBold = c.tagName === 'STRONG' || c.tagName === 'B'
+          const isItalic = c.tagName === 'EM' || c.tagName === 'I' || style.includes('italic')
+          const text = c.textContent || ''
+          if (text) {
+            runs.push(new TextRun({
+              text,
+              bold: isBold,
+              italics: isRed || isItalic,
+              color: isRed ? 'DC2626' : undefined,
+            }))
+          }
+        }
+      })
+      return runs
+    }
+
+    const children: InstanceType<typeof Paragraph>[] = []
+    parsed.body.childNodes.forEach((node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return
+      const el = node as Element
+      const tag = el.tagName.toLowerCase()
+      const runs = getRuns(el)
+      if (tag === 'h1') {
+        children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 120 }, children: runs.length ? runs : [new TextRun(el.textContent || '')] }))
+      } else if (tag === 'h2') {
+        children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 360, after: 100 }, children: runs.length ? runs : [new TextRun(el.textContent || '')] }))
+      } else if (tag === 'h3') {
+        children.push(new Paragraph({ heading: HeadingLevel.HEADING_3, spacing: { before: 240, after: 80 }, children: runs.length ? runs : [new TextRun(el.textContent || '')] }))
+      } else if (tag === 'p' && runs.length) {
+        children.push(new Paragraph({ spacing: { after: 120 }, children: runs }))
+      }
+    })
+
+    if (children.length === 0) {
+      children.push(new Paragraph({ children: [new TextRun(parsed.body.textContent || '')] }))
+    }
+
+    const docx = new DocxDocument({ sections: [{ children }] })
+    const blob = await Packer.toBlob(docx)
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
+    const a = window.document.createElement('a')
     a.href = url
-    a.download = 'CPR_annotated.doc'
+    a.download = 'CPR_annotated.docx'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -545,7 +593,7 @@ ${annotatedHtml}
                   </div>
                   {showAnnotated && (
                     <div
-                      className="overflow-auto rounded-xl p-5"
+                      className="doc-preview overflow-auto rounded-xl p-5"
                       style={{
                         background: '#fafaf9',
                         maxHeight: 600,
