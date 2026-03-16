@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mammoth = require('mammoth') as typeof import('mammoth')
 
 export async function GET() {
   const supabase = await createClient()
@@ -30,9 +32,6 @@ export async function POST(req: NextRequest) {
   if (!docFile) {
     return NextResponse.json({ error: '논문 파일이 필요합니다' }, { status: 400 })
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mammoth = require('mammoth')
 
   const docBuffer = Buffer.from(await docFile.arrayBuffer())
 
