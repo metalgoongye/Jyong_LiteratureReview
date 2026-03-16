@@ -48,6 +48,7 @@ export default function CprPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [sessionLoading, setSessionLoading] = useState(false)
   const [error, setError] = useState('')
   const [expertReview, setExpertReview] = useState<ExpertReview | null>(null)
   const [annotatedHtml, setAnnotatedHtml] = useState('')
@@ -78,21 +79,22 @@ export default function CprPage() {
   }
 
   async function loadSession(id: string) {
+    setSessionLoading(true)
+    setExpertReview(null)
+    setAnnotatedHtml('')
+    setError('')
     const res = await fetch(`/api/cpr/${id}`)
-    if (!res.ok) return
+    if (!res.ok) { setSessionLoading(false); return }
     const data = await res.json()
     const s = data.session
     setSelectedId(id)
     setSynthesisId(s.synthesis_id || '')
-    if (s.status === 'completed') {
-      setExpertReview(s.expert_review || null)
+    if (s.status === 'completed' && s.expert_review) {
+      setExpertReview(s.expert_review)
       setAnnotatedHtml(s.annotated_html || '')
       setShowAnnotated(true)
-    } else {
-      setExpertReview(null)
-      setAnnotatedHtml('')
     }
-    setError('')
+    setSessionLoading(false)
   }
 
   function resetForm() {
@@ -321,8 +323,8 @@ export default function CprPage() {
             <p className="text-xs opacity-40 mt-0.5">논문 소생 — 선행연구 보강 + AI 전문가 리뷰</p>
           </div>
 
-          {/* Upload section — hidden after analysis complete */}
-          {!expertReview && (
+          {/* Upload section — only when no session selected */}
+          {!selectedId && !expertReview && (
             <div className="glass-card p-5 mb-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 {/* Doc file */}
@@ -433,6 +435,29 @@ export default function CprPage() {
                   {uploading ? '파일 처리 중...' : analyzing ? 'AI 분석 중...' : 'AI 분석 시작'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Session loading */}
+          {sessionLoading && (
+            <div className="glass-card p-8 text-center mb-4">
+              <div className="inline-block w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin opacity-30 mb-2" />
+              <p className="text-xs opacity-40">불러오는 중...</p>
+            </div>
+          )}
+
+          {/* Session selected but no results — re-analyze */}
+          {selectedId && !expertReview && !sessionLoading && !isLoading && (
+            <div className="glass-card p-8 text-center mb-4">
+              <p className="text-sm opacity-40 mb-3">저장된 결과가 없습니다</p>
+              <button
+                onClick={handleReanalyze}
+                disabled={analyzing}
+                className="text-sm px-4 py-2 rounded-xl transition-opacity hover:opacity-70"
+                style={{ background: 'rgba(37,99,235,0.08)', color: '#2563eb' }}
+              >
+                ↻ 재분석 실행
+              </button>
             </div>
           )}
 
@@ -610,8 +635,8 @@ export default function CprPage() {
             </>
           )}
 
-          {/* Empty state */}
-          {!expertReview && !isLoading && !docFile && (
+          {/* Empty state — only when nothing selected */}
+          {!selectedId && !expertReview && !isLoading && !docFile && (
             <div className="glass-card p-12 text-center">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-4 opacity-20">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
