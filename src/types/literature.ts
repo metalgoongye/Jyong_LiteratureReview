@@ -96,6 +96,7 @@ export interface LiteratureContent {
 }
 
 export type SectionType =
+  | 'research_background'
   | 'research_question'
   | 'methodology'
   | 'findings'
@@ -107,6 +108,7 @@ export type SectionType =
   | 'other'
 
 export const SECTION_LABELS: Record<SectionType, string> = {
+  research_background: '연구 배경',
   research_question: '연구 질문',
   methodology: '연구 방법',
   findings: '연구 결과',
