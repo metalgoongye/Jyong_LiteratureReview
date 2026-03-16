@@ -89,12 +89,17 @@ Be specific — cite exact locations in the manuscript and provide ready-to-inse
     : ''
 
   const taskSynthesis = synthesisContext
-    ? `literature_gaps: Find 3-5 places in the manuscript where evidence from the synthesis above would strengthen the argument WITHOUT duplicating existing citations.
+    ? `literature_gaps: Find 3-5 specific places in the manuscript where the synthesis references above would strengthen the argument WITHOUT duplicating citations already in the manuscript.
+CRITICAL RULES:
+- insertion_text MUST cite REAL authors from the Available References list above (e.g., "Ewing et al. (2016)" or "Glaeser & Kahn (2008)"). Never invent authors.
+- Copy the exact author names and year from the Available References list.
+- Draw the substance of insertion_text from the synthesis sections above (which summarize what those papers found).
+- new_references MUST be copied verbatim from the Available References list — do not paraphrase or shorten.
 For each gap:
-- topic: brief topic label
+- topic: brief topic label (Korean if manuscript is Korean)
 - location: quote the first 8-10 words of the sentence/paragraph BEFORE the insertion point
-- insertion_text: a complete academic sentence (or 2) citing the synthesis source, ready to copy-paste. Must be NEW content not already in the manuscript.
-- new_references: array of full APA/Chicago reference strings for sources cited in insertion_text (from the Available References list above)`
+- insertion_text: 1-2 complete academic sentences using real authors from the reference list, ready to paste into the manuscript
+- new_references: copy the EXACT full citation string(s) from the Available References list for each author cited`
     : `literature_gaps: Identify 3-5 prior literature gaps in the manuscript. For each:
 - topic: brief topic label
 - location: quote the first 8-10 words of the sentence/paragraph before insertion point

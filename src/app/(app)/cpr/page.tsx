@@ -612,7 +612,7 @@ export default function CprPage() {
                         className="text-xs px-2.5 py-1 rounded-lg transition-opacity hover:opacity-70"
                         style={{ background: 'rgba(0,0,0,0.06)' }}
                       >
-                        .doc 다운로드
+                        .docx 다운로드
                       </button>
                     </div>
                   </div>
