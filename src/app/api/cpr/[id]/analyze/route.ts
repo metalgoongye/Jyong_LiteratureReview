@@ -99,17 +99,36 @@ function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string
     return inserts ? block + inserts.join('') : block
   }).join('')
 
-  // Append new references section (deduplicated)
+  // Append new references section (deduplicated), marking ones already in manuscript
   const allNewRefs = gaps.flatMap((g) => g.new_references || []).filter(Boolean)
   const dedupedRefs = [...new Set(allNewRefs)]
   if (dedupedRefs.length > 0) {
     html += `\n<p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>\n`
     for (const ref of dedupedRefs) {
-      html += `<p style="color:#dc2626;margin-top:4px;">▸ ${escapeHtml(ref)}</p>\n`
+      const alreadyIn = isInManuscript(ref, originalHtml)
+      const suffix = alreadyIn ? ` <span style="color:#6b7280;font-size:0.85em;">(기존논문에도 있음)</span>` : ''
+      html += `<p style="color:#dc2626;margin-top:4px;">▸ ${escapeHtml(ref)}${suffix}</p>\n`
     }
   }
 
   return html
+}
+
+// Check if a reference's first author + year already appear together in the manuscript
+function isInManuscript(refStr: string, manuscriptHtml: string): boolean {
+  const authorMatch = refStr.match(/^([A-Za-z\u00C0-\u024F\-']+),/)
+  const yearMatch = refStr.match(/\((\d{4}[a-z]?)\)/)
+  if (!authorMatch || !yearMatch) return false
+  const lastName = authorMatch[1].toLowerCase()
+  const year = yearMatch[1]
+  const plainText = stripTags(manuscriptHtml).toLowerCase()
+  let idx = 0
+  while ((idx = plainText.indexOf(lastName, idx)) !== -1) {
+    const nearby = plainText.slice(Math.max(0, idx - 10), idx + 120)
+    if (nearby.includes(year)) return true
+    idx++
+  }
+  return false
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -201,12 +220,12 @@ CRITICAL RULES:
 - insertion_text MUST cite REAL authors from the Available References list above (e.g., "Ewing et al. (2016)"). Never invent authors.
 - Copy exact author names and year from the Available References list.
 - The inserted sentence must read as a natural continuation of the surrounding text — not as a bracketed annotation.
-- new_references MUST be copied verbatim from the Available References list.
+- new_references: copy the COMPLETE full string from the numbered Available References list (e.g., if you cited [3], copy the entire "[3]" entry string word-for-word including authors, year, title, journal, DOI — not an abbreviated form).
 For each gap:
 - topic: brief label describing what logical link is being added (Korean if manuscript is Korean)
 - location: quote the EXACT first 8-10 words of the sentence/paragraph AFTER which to insert (verbatim from manuscript)
 - insertion_text: 1-2 academic sentences that bridge the argument gap, citing real authors, written to flow naturally with the surrounding text
-- new_references: EXACT full citation string(s) from Available References for each cited author`
+- new_references: array of COMPLETE APA reference strings copied verbatim from Available References (the full string, not "Author et al., Year")`
     : `literature_gaps: Identify 3-5 argument gaps in the manuscript where a connecting sentence would strengthen the logical flow. For each:
 - topic: brief label (Korean if manuscript is Korean)
 - location: quote the exact first 8-10 words of the sentence/paragraph after which to insert
