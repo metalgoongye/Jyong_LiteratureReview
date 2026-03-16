@@ -1,17 +1,84 @@
 import type { ExtractionResult } from '@/types/api'
 import type { Literature, LiteratureContent, EmpiricalEvidence, SectionType } from '@/types/literature'
 
+function repairTruncatedJson(raw: string): string {
+  // Strip markdown fences if present
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+  let s = fenceMatch ? fenceMatch[1] : raw
+
+  // Find the outermost opening brace
+  const start = s.indexOf('{')
+  if (start === -1) throw new Error('No JSON object found')
+  s = s.slice(start)
+
+  // Walk through and track open structures
+  let depth = 0
+  let inString = false
+  let escape = false
+  let lastCompleteDepthZero = -1
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (escape) { escape = false; continue }
+    if (ch === '\\' && inString) { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{' || ch === '[') depth++
+    else if (ch === '}' || ch === ']') {
+      depth--
+      if (depth === 0) lastCompleteDepthZero = i
+    }
+  }
+
+  if (depth === 0 && lastCompleteDepthZero === s.length - 1) return s // already valid
+
+  // Truncated: close open structures
+  const closers: string[] = []
+  let d = 0
+  let ins = false
+  let esc = false
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (esc) { esc = false; continue }
+    if (ch === '\\' && ins) { esc = true; continue }
+    if (ch === '"') { ins = !ins; continue }
+    if (ins) continue
+    if (ch === '{') { d++; closers.push('}') }
+    else if (ch === '[') { d++; closers.push(']') }
+    else if (ch === '}' || ch === ']') { d--; closers.pop() }
+  }
+
+  // Trim trailing incomplete token (comma, colon, partial string)
+  let trimmed = s.trimEnd()
+  while (trimmed.endsWith(',') || trimmed.endsWith(':')) {
+    trimmed = trimmed.slice(0, -1).trimEnd()
+  }
+  // Close unclosed string
+  if (ins) trimmed += '"'
+
+  return trimmed + closers.reverse().join('')
+}
+
 export function parseExtractionResponse(rawJson: string): ExtractionResult {
   let parsed: ExtractionResult
   try {
     parsed = JSON.parse(rawJson)
   } catch {
     // Try extracting JSON from markdown code blocks
-    const match = rawJson.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (match) {
-      parsed = JSON.parse(match[1])
+    const fenceMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (fenceMatch) {
+      try {
+        parsed = JSON.parse(fenceMatch[1])
+      } catch {
+        parsed = JSON.parse(repairTruncatedJson(fenceMatch[1]))
+      }
     } else {
-      throw new Error('Invalid JSON response from AI')
+      // Try repairing truncated JSON
+      try {
+        parsed = JSON.parse(repairTruncatedJson(rawJson))
+      } catch {
+        throw new Error('Invalid JSON response from AI')
+      }
     }
   }
 
@@ -24,6 +91,7 @@ export function parseExtractionResponse(rawJson: string): ExtractionResult {
 }
 
 const VALID_SECTION_TYPES: SectionType[] = [
+  'research_background',
   'research_question',
   'methodology',
   'findings',
