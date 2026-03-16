@@ -18,7 +18,50 @@ interface AnalysisResult {
   strengths: string[]
   major_concerns: string[]
   reviewer_responses: string[]
-  annotated_html: string
+}
+
+// Programmatically inject red spans into full HTML — no truncation, no AI hallucination
+function buildAnnotatedHtml(originalHtml: string, gaps: LiteratureGap[]): string {
+  let html = originalHtml
+
+  for (const gap of gaps) {
+    if (!gap.location || !gap.insertion_text) continue
+
+    // Use first ~30 chars of location quote to find paragraph
+    const searchStr = gap.location.replace(/\s+/g, ' ').trim().slice(0, 30)
+    if (!searchStr) continue
+
+    const lowerHtml = html.toLowerCase()
+    const lowerSearch = searchStr.toLowerCase()
+    const idx = lowerHtml.indexOf(lowerSearch)
+    if (idx === -1) continue
+
+    // Find end of the </p> containing this text
+    const paraEnd = html.indexOf('</p>', idx)
+    if (paraEnd === -1) continue
+
+    const insertPos = paraEnd + 4
+    const escaped = gap.insertion_text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    const redSpan = `<p style="color:#dc2626;font-style:italic;margin-top:4px;">[보강 제안: ${escaped}]</p>`
+    html = html.slice(0, insertPos) + redSpan + html.slice(insertPos)
+  }
+
+  // Append new references section (deduplicated)
+  const allNewRefs = gaps.flatMap((g) => g.new_references || []).filter(Boolean)
+  const dedupedRefs = [...new Set(allNewRefs)]
+
+  if (dedupedRefs.length > 0) {
+    html += `\n<p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>\n`
+    for (const ref of dedupedRefs) {
+      const escaped = ref.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      html += `<p style="color:#dc2626;margin-top:4px;">▸ ${escaped}</p>\n`
+    }
+  }
+
+  return html
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -58,18 +101,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         .map((s) => `[${s.heading}]\n${s.body}`)
         .join('\n\n')
 
-      synthesisRefList = (result.references || []).map((r) => r.citation)
+      // filter(Boolean) removes undefined/null/empty strings
+      synthesisRefList = (result.references || [])
+        .map((r) => r.citation)
+        .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+
       const refsText = synthesisRefList.map((r, i) => `[${i + 1}] ${r}`).join('\n')
 
       synthesisContext = `Synthesis Topic: ${synthesis.hypothesis}\n\n${sectionsText}\n\nAvailable References:\n${refsText}`
     }
   }
 
-  // original_html is preserved in its own column — safe for re-analysis
-  const originalHtml = session.original_html || ''
-
   // Use plain text for AI (truncated to fit context)
   const manuscriptText = (session.original_text || '').slice(0, 10000)
+
+  // Full original HTML stored separately — used for programmatic annotation (no truncation)
+  const originalHtml = session.original_html || ''
 
   const systemPrompt = `You are the world's foremost academic authority reviewing a manuscript.
 Your primary goal: identify gaps in prior literature coverage and suggest specific evidence from the synthesis to fill those gaps.
@@ -106,20 +153,6 @@ For each gap:
 - insertion_text: suggested academic sentence to add (general recommendation, no specific source)
 - new_references: []`
 
-  const htmlInstruction = originalHtml
-    ? `annotated_html: Take the COMPLETE ORIGINAL HTML below and:
-1. KEEP ALL ORIGINAL CONTENT intact — including the full References/Bibliography section at the end.
-2. For each literature_gap, find the paragraph matching the location hint and append immediately after it:
-   <span style="color:#dc2626;font-style:italic;"> [보강 제안: INSERTION_TEXT]</span>
-3. After the existing References section (or at the very end if no references), add:
-   <p style="margin-top:24px;font-weight:bold;">추가 참고문헌 제안</p>
-   Then for each NEW reference not already in the document: <p style="color:#dc2626;margin-top:4px;">▸ REFERENCE_TEXT</p>
-   If a synthesis reference is ALREADY cited in the original manuscript, skip it (do not duplicate).
-
-COMPLETE ORIGINAL HTML:
-${originalHtml.slice(0, 25000)}`
-    : `annotated_html: Return the manuscript text as HTML with red insertions.`
-
   const userPrompt = `=== MANUSCRIPT ===
 ${manuscriptText}
 ${reviewerSection}${synthesisSection}
@@ -130,7 +163,6 @@ TASKS:
 3. major_concerns: 2-4 serious issues beyond literature gaps (array of strings)
 4. ${taskReviewer ? taskReviewer + '\n5.' : '5.'} gaps_summary: 1-2 sentences summarizing what prior literature the manuscript is missing
 5. ${taskSynthesis}
-6. ${htmlInstruction}
 
 Return ONLY valid JSON (no markdown fences):
 {
@@ -146,8 +178,7 @@ Return ONLY valid JSON (no markdown fences):
       "insertion_text": "string — ready-to-insert academic sentence(s)",
       "new_references": ["string — full reference entry"]
     }
-  ],
-  "annotated_html": "string — full HTML with red insertions and new references at bottom"
+  ]
 }`
 
   try {
@@ -158,7 +189,7 @@ Return ONLY valid JSON (no markdown fences):
       ],
       response_format: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 16000,
+      max_tokens: 8000,
     })
 
     const parsed = JSON.parse(raw) as AnalysisResult
@@ -172,13 +203,18 @@ Return ONLY valid JSON (no markdown fences):
       literature_gaps: parsed.literature_gaps || [],
     }
 
+    // Programmatically annotate the FULL original HTML — no truncation
+    const annotated_html = originalHtml
+      ? buildAnnotatedHtml(originalHtml, expert_review.literature_gaps)
+      : ''
+
     await supabase.from('cpr_sessions').update({
       expert_review,
-      annotated_html: parsed.annotated_html || '',
+      annotated_html,
       status: 'completed',
     }).eq('id', id)
 
-    return NextResponse.json({ expert_review, annotated_html: parsed.annotated_html || '' })
+    return NextResponse.json({ expert_review, annotated_html })
   } catch (err) {
     await supabase.from('cpr_sessions').update({ status: 'failed' }).eq('id', id)
     const msg = err instanceof Error ? err.message : '분석 실패'
