@@ -37,6 +37,27 @@ interface SynthesisMeta {
   created_at: string
 }
 
+interface CausalPath {
+  from: string
+  to: string
+  mechanism: string
+  path_type?: 'direct' | 'mediated' | 'moderated'
+}
+
+interface ResearchDesign {
+  causal_paths: CausalPath[]
+  key_variables: {
+    independent: string[]
+    mediator: string[]
+    dependent: string[]
+    moderator?: string[]
+    control: string[]
+  }
+  analysis_methods: Array<{ method: string; purpose: string; software?: string }>
+  data_requirements: Array<{ variable: string; source: string; unit?: string; level?: string }>
+  summary: string
+}
+
 function generateWordHTML(result: SynthesisResult): string {
   const sectionsHTML = result.sections.map((s) => `
     <h2 style="font-size:14pt; font-weight:bold; margin-top:16pt;">${s.heading}</h2>
@@ -83,6 +104,9 @@ export default function SynthesisPage() {
   const [improveLoading, setImproveLoading] = useState(false)
   const [improveError, setImproveError] = useState('')
   const [improveDismissed, setImproveDismissed] = useState(false)
+  const [researchDesign, setResearchDesign] = useState<ResearchDesign | null>(null)
+  const [designLoading, setDesignLoading] = useState(false)
+  const [designError, setDesignError] = useState('')
 
   useEffect(() => {
     fetchHistory()
@@ -107,6 +131,8 @@ export default function SynthesisPage() {
     setReviewError('')
     setImproveError('')
     setImproveDismissed(false)
+    setResearchDesign(null)
+    setDesignError('')
     try {
       const res = await fetch(`/api/synthesis/${id}`)
       const data = await res.json()
@@ -115,6 +141,9 @@ export default function SynthesisPage() {
         setHypothesis(data.synthesis.hypothesis)
         if (data.synthesis.review) {
           setReview(data.synthesis.review)
+        }
+        if (data.synthesis.research_design) {
+          setResearchDesign(data.synthesis.research_design)
         }
       }
     } catch {
@@ -132,6 +161,8 @@ export default function SynthesisPage() {
     setReviewError('')
     setImproveError('')
     setImproveDismissed(false)
+    setResearchDesign(null)
+    setDesignError('')
     try {
       const res = await fetch('/api/synthesis', {
         method: 'POST',
@@ -177,6 +208,24 @@ export default function SynthesisPage() {
     setReviewError('')
     setImproveError('')
     setImproveDismissed(false)
+    setResearchDesign(null)
+    setDesignError('')
+  }
+
+  async function handleResearchDesign() {
+    if (!selectedId) return
+    setDesignLoading(true)
+    setDesignError('')
+    try {
+      const res = await fetch(`/api/synthesis/${selectedId}/research-design`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '연구설계 생성 실패')
+      setResearchDesign(data.research_design)
+    } catch (err) {
+      setDesignError(err instanceof Error ? err.message : '오류 발생')
+    } finally {
+      setDesignLoading(false)
+    }
   }
 
   async function handleImprove() {
@@ -427,22 +476,40 @@ export default function SynthesisPage() {
                   Word 저장
                 </button>
                 {selectedId && (
-                  <button
-                    onClick={handleReview}
-                    disabled={reviewLoading}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80 ml-auto"
-                    style={{
-                      background: reviewLoading ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.1)',
-                      color: '#4338ca',
-                      cursor: reviewLoading ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4" />
-                      <circle cx="12" cy="12" r="10" />
-                    </svg>
-                    {reviewLoading ? 'AI 검증 중...' : 'AI 자가검증'}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleResearchDesign}
+                      disabled={designLoading}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
+                      style={{
+                        background: designLoading ? 'rgba(16,185,129,0.06)' : 'rgba(16,185,129,0.1)',
+                        color: '#047857',
+                        cursor: designLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                      </svg>
+                      {designLoading ? '연구설계 생성 중...' : researchDesign ? '연구설계 재생성' : '연구설계 생성'}
+                    </button>
+                    <button
+                      onClick={handleReview}
+                      disabled={reviewLoading}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80 ml-auto"
+                      style={{
+                        background: reviewLoading ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.1)',
+                        color: '#4338ca',
+                        cursor: reviewLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 12l2 2 4-4" />
+                        <circle cx="12" cy="12" r="10" />
+                      </svg>
+                      {reviewLoading ? 'AI 검증 중...' : 'AI 자가검증'}
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -475,6 +542,164 @@ export default function SynthesisPage() {
                   </div>
                 )}
               </div>
+
+              {/* Design error */}
+              {designError && (
+                <p className="text-red-500 text-xs mt-3 no-print">{designError}</p>
+              )}
+
+              {/* Research Design Panel */}
+              {researchDesign && (
+                <div className="mt-6 no-print rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.02)' }}>
+                  {/* Header */}
+                  <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(16,185,129,0.12)', background: 'rgba(16,185,129,0.06)' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                    </svg>
+                    <span className="text-sm font-semibold" style={{ color: '#047857' }}>연구설계 (인과관계 모식도)</span>
+                  </div>
+
+                  <div className="px-6 py-5 flex flex-col gap-7">
+                    {/* Summary */}
+                    <p className="text-sm leading-relaxed" style={{ color: '#333' }}>{researchDesign.summary}</p>
+
+                    {/* Causal Diagram */}
+                    {researchDesign.causal_paths?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#047857', opacity: 0.8 }}>인과관계 경로도</h4>
+                        <div className="flex flex-col gap-3">
+                          {researchDesign.causal_paths.map((path, i) => (
+                            <div key={i} className="flex items-start gap-0">
+                              {/* From node */}
+                              <div className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-medium text-center min-w-[120px]" style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.25)' }}>
+                                {path.from}
+                              </div>
+                              {/* Arrow + mechanism */}
+                              <div className="flex flex-col items-center flex-1 px-2 pt-1">
+                                <div className="flex items-center w-full">
+                                  <div style={{ flex: 1, height: 2, background: path.path_type === 'moderated' ? '#d97706' : '#9ca3af' }} />
+                                  <span style={{ fontSize: 16, color: path.path_type === 'moderated' ? '#d97706' : '#9ca3af', lineHeight: 1 }}>→</span>
+                                </div>
+                                <p className="text-xs mt-1 px-1 leading-snug text-center" style={{ color: '#6b7280', maxWidth: 220 }}>
+                                  {path.path_type === 'mediated' && <span className="font-medium" style={{ color: '#7c3aed' }}>[매개] </span>}
+                                  {path.path_type === 'moderated' && <span className="font-medium" style={{ color: '#d97706' }}>[조절] </span>}
+                                  {path.mechanism}
+                                </p>
+                              </div>
+                              {/* To node */}
+                              <div className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-medium text-center min-w-[120px]" style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.25)' }}>
+                                {path.to}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Key Variables */}
+                    {researchDesign.key_variables && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#047857', opacity: 0.8 }}>핵심 변수</h4>
+                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                          {researchDesign.key_variables.independent?.length > 0 && (
+                            <div className="rounded-xl p-3" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                              <p className="text-xs font-semibold mb-2" style={{ color: '#1d4ed8' }}>독립변수 (X)</p>
+                              {researchDesign.key_variables.independent.map((v, i) => (
+                                <p key={i} className="text-xs leading-snug mt-1" style={{ color: '#444' }}>• {v}</p>
+                              ))}
+                            </div>
+                          )}
+                          {researchDesign.key_variables.mediator?.length > 0 && (
+                            <div className="rounded-xl p-3" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+                              <p className="text-xs font-semibold mb-2" style={{ color: '#7c3aed' }}>매개변수 (M)</p>
+                              {researchDesign.key_variables.mediator.map((v, i) => (
+                                <p key={i} className="text-xs leading-snug mt-1" style={{ color: '#444' }}>• {v}</p>
+                              ))}
+                            </div>
+                          )}
+                          {researchDesign.key_variables.dependent?.length > 0 && (
+                            <div className="rounded-xl p-3" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                              <p className="text-xs font-semibold mb-2" style={{ color: '#047857' }}>종속변수 (Y)</p>
+                              {researchDesign.key_variables.dependent.map((v, i) => (
+                                <p key={i} className="text-xs leading-snug mt-1" style={{ color: '#444' }}>• {v}</p>
+                              ))}
+                            </div>
+                          )}
+                          {(researchDesign.key_variables.moderator?.length ?? 0) > 0 && (
+                            <div className="rounded-xl p-3" style={{ background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)' }}>
+                              <p className="text-xs font-semibold mb-2" style={{ color: '#b45309' }}>조절변수 (W)</p>
+                              {(researchDesign.key_variables.moderator ?? []).map((v, i) => (
+                                <p key={i} className="text-xs leading-snug mt-1" style={{ color: '#444' }}>• {v}</p>
+                              ))}
+                            </div>
+                          )}
+                          {researchDesign.key_variables.control?.length > 0 && (
+                            <div className="rounded-xl p-3" style={{ background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
+                              <p className="text-xs font-semibold mb-2" style={{ color: '#4b5563' }}>통제변수</p>
+                              {researchDesign.key_variables.control.map((v, i) => (
+                                <p key={i} className="text-xs leading-snug mt-1" style={{ color: '#444' }}>• {v}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Analysis Methods */}
+                    {researchDesign.analysis_methods?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#047857', opacity: 0.8 }}>분석방법</h4>
+                        <div className="flex flex-col gap-2">
+                          {researchDesign.analysis_methods.map((m, i) => (
+                            <div key={i} className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                              <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(16,185,129,0.15)', color: '#047857', marginTop: 1 }}>
+                                {i + 1}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-xs font-semibold" style={{ color: '#111' }}>{m.method}</p>
+                                <p className="text-xs mt-0.5 leading-snug" style={{ color: '#555' }}>{m.purpose}</p>
+                                {m.software && (
+                                  <p className="text-xs mt-1 font-mono" style={{ color: '#6b7280' }}>소프트웨어: {m.software}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Data Requirements */}
+                    {researchDesign.data_requirements?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#047857', opacity: 0.8 }}>필요 데이터</h4>
+                        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr style={{ background: 'rgba(0,0,0,0.04)' }}>
+                                <th className="text-left px-4 py-2.5 font-semibold" style={{ color: '#444', width: '22%' }}>변수</th>
+                                <th className="text-left px-4 py-2.5 font-semibold" style={{ color: '#444', width: '36%' }}>데이터 출처</th>
+                                <th className="text-left px-4 py-2.5 font-semibold" style={{ color: '#444', width: '20%' }}>단위</th>
+                                <th className="text-left px-4 py-2.5 font-semibold" style={{ color: '#444', width: '22%' }}>분석 단위</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {researchDesign.data_requirements.map((d, i) => (
+                                <tr key={i} style={{ borderTop: '1px solid rgba(0,0,0,0.05)', background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)' }}>
+                                  <td className="px-4 py-2.5 font-medium" style={{ color: '#222' }}>{d.variable}</td>
+                                  <td className="px-4 py-2.5" style={{ color: '#555' }}>{d.source}</td>
+                                  <td className="px-4 py-2.5 font-mono" style={{ color: '#6b7280' }}>{d.unit || '—'}</td>
+                                  <td className="px-4 py-2.5" style={{ color: '#6b7280' }}>{d.level || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Review error */}
               {reviewError && (
