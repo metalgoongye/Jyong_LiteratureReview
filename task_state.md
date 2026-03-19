@@ -1,6 +1,6 @@
 # LitReview App — 작업 상태 정리
 
-> 작성일: 2026-03-17
+> 최종 업데이트: 2026-03-17
 
 ---
 
@@ -85,6 +85,9 @@ supabase/migrations/
   20260314000001_quality_scores.sql
   20260316000001_cpr_sessions.sql
   20260317000001_synthesis_research_design.sql  ✨
+
+.claude/commands/
+  update-task-state.md   프로젝트 상태 파일 업데이트 커맨드
 ```
 
 ---
