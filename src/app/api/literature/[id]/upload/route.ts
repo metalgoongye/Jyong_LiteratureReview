@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { uploadFileToStorage } from '@/lib/storage/upload'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+
+const BUCKET = 'literature-files'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  // Auth check with regular client
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -24,11 +27,21 @@ export async function POST(
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
+  // Use service client to bypass storage RLS for server-side uploads
+  const service = await createServiceClient()
+
+  const ext = file.name.split('.').pop() || 'bin'
+  const filePath = `${user.id}/${id}/file.${ext}`
+
   let storagePath: string
   try {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    storagePath = await uploadFileToStorage(buffer, user.id, id, file.name, file.type || 'application/octet-stream')
+    const { error: storageError } = await service.storage
+      .from(BUCKET)
+      .upload(filePath, buffer, { contentType: file.type || 'application/octet-stream', upsert: true })
+    if (storageError) throw new Error(storageError.message)
+    storagePath = filePath
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Storage upload failed'
     return NextResponse.json({ error: msg }, { status: 500 })
