@@ -24,9 +24,15 @@ export async function POST(
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
-  const storagePath = await uploadFileToStorage(buffer, user.id, id, file.name, file.type || 'application/octet-stream')
+  let storagePath: string
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    storagePath = await uploadFileToStorage(buffer, user.id, id, file.name, file.type || 'application/octet-stream')
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Storage upload failed'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 
   const { error } = await supabase
     .from('literature')

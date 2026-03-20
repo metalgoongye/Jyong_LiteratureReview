@@ -104,7 +104,10 @@ export function EditButton({ literature }: { literature: Literature }) {
           method: 'POST',
           body: fd,
         })
-        if (!uploadRes.ok) throw new Error('파일 업로드 실패')
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}))
+          throw new Error(errData.error || '파일 업로드 실패')
+        }
       }
 
       setOpen(false)
