@@ -17,6 +17,7 @@ export async function PATCH(
   const editableFields = [
     'user_notes', 'title', 'year', 'journal_name', 'volume', 'issue',
     'pages', 'publisher', 'country', 'doi', 'abstract', 'language', 'doc_type',
+    'storage_path', 'original_filename', 'source_type',
   ]
   for (const field of editableFields) {
     if (field in body) allowed[field] = body[field] ?? null

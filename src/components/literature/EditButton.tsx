@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 interface Literature {
   id: string
@@ -96,20 +97,23 @@ export function EditButton({ literature }: { literature: Literature }) {
       })
       if (!res.ok) throw new Error('저장 실패')
 
-      // 2. Upload new file if selected
+      // 2. Upload new file directly to Supabase Storage (bypass Vercel 4.5MB limit)
       if (newFile) {
-        const fd = new FormData()
-        fd.append('file', newFile)
-        const uploadRes = await fetch(`/api/literature/${literature.id}/upload`, {
-          method: 'POST',
-          body: fd,
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('로그인이 필요합니다')
+        const ext = newFile.name.split('.').pop() || 'bin'
+        const filePath = `${user.id}/${literature.id}/file.${ext}`
+        const { error: storageError } = await supabase.storage
+          .from('literature-files')
+          .upload(filePath, newFile, { contentType: newFile.type || 'application/octet-stream', upsert: true })
+        if (storageError) throw new Error('Storage: ' + storageError.message)
+        // Update storage_path in DB
+        await fetch(`/api/literature/${literature.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storage_path: filePath, original_filename: newFile.name, source_type: 'pdf' }),
         })
-        if (!uploadRes.ok) {
-          const rawText = await uploadRes.text().catch(() => '(no body)')
-          let errMsg: string | undefined
-          try { errMsg = JSON.parse(rawText).error } catch {}
-          throw new Error('[' + uploadRes.status + '] ' + (errMsg || rawText.slice(0, 300)))
-        }
       }
 
       setOpen(false)
