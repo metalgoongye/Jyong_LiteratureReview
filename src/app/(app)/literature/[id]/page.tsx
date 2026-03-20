@@ -9,6 +9,7 @@ import { CausalDiagram } from '@/components/literature/CausalDiagram'
 import { UserNotes } from '@/components/literature/UserNotes'
 import { Badge } from '@/components/ui/Badge'
 import { DeleteButton } from '@/components/literature/DeleteButton'
+import { EditButton } from '@/components/literature/EditButton'
 import { formatAuthors, formatYear } from '@/lib/utils/format'
 import type { LiteratureContent, EmpiricalEvidence } from '@/types/literature'
 
@@ -77,6 +78,7 @@ export default async function LiteratureDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <EditButton literature={lit} />
           <DeleteButton literatureId={lit.id} />
           <Badge variant={statusVariants[lit.extraction_status as keyof typeof statusVariants]}>
             {statusLabels[lit.extraction_status as keyof typeof statusLabels]}

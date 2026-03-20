@@ -13,7 +13,16 @@ export async function PATCH(
 
   const body = await request.json()
   const allowed: Record<string, unknown> = {}
-  if ('user_notes' in body) allowed.user_notes = body.user_notes
+
+  const editableFields = [
+    'user_notes', 'title', 'year', 'journal_name', 'volume', 'issue',
+    'pages', 'publisher', 'country', 'doi', 'abstract', 'language', 'doc_type',
+  ]
+  for (const field of editableFields) {
+    if (field in body) allowed[field] = body[field] ?? null
+  }
+  // authors is an array — handle separately
+  if ('authors' in body) allowed.authors = body.authors?.length ? body.authors : null
 
   const { error } = await supabase
     .from('literature')
