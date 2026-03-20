@@ -19,11 +19,10 @@ export default async function DashboardPage() {
   const allItems = allLiterature || []
   const total = allItems.length
   const completed = allItems.filter((i) => i.extraction_status === 'completed').length
+  const accuracyItems = allItems.filter((i) => i.extraction_accuracy != null)
   const avgAccuracy =
-    completed > 0
-      ? allItems
-          .filter((i) => i.extraction_accuracy != null)
-          .reduce((acc, i) => acc + (i.extraction_accuracy || 0), 0) / completed
+    accuracyItems.length > 0
+      ? accuracyItems.reduce((acc, i) => acc + (i.extraction_accuracy || 0), 0) / accuracyItems.length
       : null
 
   // Field distribution (all items)
